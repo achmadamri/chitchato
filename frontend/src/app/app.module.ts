@@ -13,6 +13,7 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { AppRoutingModule } from './app.routing';
 import { ComponentsModule } from './components/components.module';
 import { KeycloakAngularModule, KeycloakService } from 'keycloak-angular';
+import { environment } from '../environments/environment'; // Adjust the path as necessary
 
 function initializeKeycloak(keycloak: KeycloakService) {
   return () =>
@@ -20,7 +21,7 @@ function initializeKeycloak(keycloak: KeycloakService) {
       config: {
         url: 'https://auth.chitchato.com',        
         realm: 'chitchato',
-        clientId: 'angular-client',
+        clientId: environment.keycloakClientId, // Use environment-specific clientId
       },
       initOptions: {
         onLoad: 'login-required',  // allowed values 'login-required', 'check-sso';
