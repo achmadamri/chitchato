@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { KeycloakService } from 'keycloak-angular';
+import { KeycloakProfile } from 'keycloak-js';
 
 @Component({
   selector: 'app-user-profile',
@@ -6,10 +8,14 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./user-profile.component.scss']
 })
 export class UserProfileComponent implements OnInit {
+  userProfile: KeycloakProfile | null = null;
 
-  constructor() { }
+  constructor(private keycloakService: KeycloakService) { }
 
-  ngOnInit() {
+  async ngOnInit() {
+    if (this.keycloakService.isLoggedIn()) {
+      this.userProfile = await this.keycloakService.loadUserProfile();      
+    }
   }
 
 }
