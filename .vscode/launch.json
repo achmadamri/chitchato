@@ -2,11 +2,11 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Spring Boot-OAuth2ResourceServerApplication<spring-rest-authz-resource-server>",
+            "name": "Spring Boot-Application<backend>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "mainClass": "org.keycloak.quickstart.OAuth2ResourceServerApplication",
-            "projectName": "spring-rest-authz-resource-server",
+            "mainClass": "com.api.dms.auth.Application",
+            "projectName": "backend",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
         }
