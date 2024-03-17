@@ -9,6 +9,26 @@
             "projectName": "backend",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-OAuth2ResourceServerApplication<spring-rest-authz-resource-server>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "org.keycloak.quickstart.OAuth2ResourceServerApplication",
+            "projectName": "spring-rest-authz-resource-server",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-OAuth2ResourceServerApplication<backend>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "org.keycloak.quickstart.OAuth2ResourceServerApplication",
+            "projectName": "backend",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }

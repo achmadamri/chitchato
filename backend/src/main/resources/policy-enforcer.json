@@ -1,0 +1,8 @@
+{
+  "realm": "chitchato",
+  "auth-server-url": "https://auth.chitchato.com",
+  "resource": "authz-servlet",
+  "credentials": {
+    "secret": "hWBkUHxzVgJWbeqCbJVOFo4VnUhs80t8"
+  }
+}
