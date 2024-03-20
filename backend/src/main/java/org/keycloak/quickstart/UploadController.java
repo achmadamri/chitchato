@@ -44,6 +44,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/upload")
 public class UploadController {
 
+	private String baseUrl = "https://chitchato.danswer.ai/";
+
+	private String fastapiusersauth = "cayVRKhdgA5PdgsFV2fqqxp12UA6h6ueRaJMdhzraZY";
+
 	private final RestTemplate restTemplate;
 
     public UploadController(RestTemplate restTemplate) {
@@ -54,14 +58,14 @@ public class UploadController {
 	public ResponseEntity<String> getIndexingStatus() {
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Accept", "application/json");
-		headers.set("cookie", "fastapiusersauth=dSsPbCPKoZrhohWi1iGvMPNWq9KgMa4gJV7MqoHT6hg");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
 		HttpEntity<String> entity = new HttpEntity<>(headers);
-		return restTemplate.exchange("https://dafba.danswer.ai/api/manage/admin/connector/indexing-status?secondary_index=false", HttpMethod.GET, entity, String.class);
+		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector/indexing-status?secondary_index=false", HttpMethod.GET, entity, String.class);
 	}
 
 	@PostMapping("/upload-file")
-	public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+	public ResponseEntity<String> uploadFile(@RequestParam("files") MultipartFile file) {
 		// Check if the file is empty or not
 		if (file.isEmpty()) {
 			return new ResponseEntity<>("Empty file cannot be uploaded", HttpStatus.BAD_REQUEST);
@@ -70,7 +74,7 @@ public class UploadController {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 		headers.set("Accept", "application/json");
-		headers.set("cookie", "fastapiusersauth=dSsPbCPKoZrhohWi1iGvMPNWq9KgMa4gJV7MqoHT6hg");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
 		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 		body.add("files", new FileSystemResource(convertMultiPartToFile(file)));
@@ -78,7 +82,7 @@ public class UploadController {
 		HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
 		// Make the network call
-		ResponseEntity<String> response = restTemplate.postForEntity("https://dafba.danswer.ai/api/manage/admin/connector/file/upload", requestEntity, String.class);
+		ResponseEntity<String> response = restTemplate.postForEntity(baseUrl + "/api/manage/admin/connector/file/upload", requestEntity, String.class);
 
 		// Implement additional logic as required
 		return response;
@@ -95,41 +99,47 @@ public class UploadController {
 	}
 
 	@PostMapping("/create-connector")
-	public ResponseEntity<String> createConnector(@RequestBody ConnectorConfig connectorConfig) {
+	public ResponseEntity<String> createConnector(@RequestBody CreateConnectorRequest createConnectorRequest) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
-		headers.set("cookie", "fastapiusersauth=dSsPbCPKoZrhohWi1iGvMPNWq9KgMa4gJV7MqoHT6hg");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
-		HttpEntity<ConnectorConfig> entity = new HttpEntity<>(connectorConfig, headers);
-		return restTemplate.exchange("https://dafba.danswer.ai/api/manage/admin/connector", HttpMethod.POST, entity, String.class);
+		HttpEntity<CreateConnectorRequest> entity = new HttpEntity<>(createConnectorRequest, headers);
+		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector", HttpMethod.POST, entity, String.class);
 	}
 
 	@PostMapping("/create-credential")
-	public ResponseEntity<String> createCredential() {
+	public ResponseEntity<String> createCredential(@RequestBody CreateCredentialRequest createCredentialRequest) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
-		headers.set("cookie", "fastapiusersauth=dSsPbCPKoZrhohWi1iGvMPNWq9KgMa4gJV7MqoHT6hg");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
-		String jsonPayload = "{ \"credential_json\": {}, \"admin_public\": true }";
-
-		HttpEntity<String> entity = new HttpEntity<>(jsonPayload, headers);
-		return restTemplate.exchange("https://dafba.danswer.ai/api/manage/credential", HttpMethod.POST, entity, String.class);
+		HttpEntity<CreateCredentialRequest> entity = new HttpEntity<>(createCredentialRequest, headers);
+		return restTemplate.exchange(baseUrl + "/api/manage/credential", HttpMethod.POST, entity, String.class);
 	}
 
 	@PutMapping("/update-connector-credential")
-	public ResponseEntity<String> updateConnectorCredential() {
+	public ResponseEntity<String> updateConnectorCredential(@RequestBody UpdateConnectorCredentialRequest updateConnectorCredentialRequest) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
-		headers.set("cookie", "fastapiusersauth=dSsPbCPKoZrhohWi1iGvMPNWq9KgMa4gJV7MqoHT6hg");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
-		String jsonPayload = "{ \"name\": \"Prabowo Subianto - Wikipedia bahasa Indonesia, ensiklopedia bebas\", \"is_public\": true }";
-
-		HttpEntity<String> entity = new HttpEntity<>(jsonPayload, headers);
-		return restTemplate.exchange("https://dafba.danswer.ai/api/manage/connector/7/credential/7", HttpMethod.PUT, entity, String.class);
+		HttpEntity<UpdateConnectorCredentialRequest> entity = new HttpEntity<>(updateConnectorCredentialRequest, headers);
+		String id = updateConnectorCredentialRequest.getId();
+		return restTemplate.exchange(baseUrl + "/api/manage/connector/" + id + "/credential/" + id, HttpMethod.PUT, entity, String.class);
 	}
 
+	@PostMapping("/run-connector-once")
+	public ResponseEntity<String> runConnectorOnce(@RequestBody RunConnectorOnceRequest runOnceRequest) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.set("Accept", "application/json");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
+		HttpEntity<RunConnectorOnceRequest> entity = new HttpEntity<>(runOnceRequest, headers);
+		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector/run-once", HttpMethod.POST, entity, String.class);
+	}
 }
