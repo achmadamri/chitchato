@@ -1,4 +1,4 @@
-package org.keycloak.quickstart;
+package org.keycloak.quickstart.request;
 
 import java.util.List;
 

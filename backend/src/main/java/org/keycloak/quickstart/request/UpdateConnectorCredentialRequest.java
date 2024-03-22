@@ -1,4 +1,4 @@
-package org.keycloak.quickstart;
+package org.keycloak.quickstart.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

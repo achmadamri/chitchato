@@ -24,7 +24,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-import org.keycloak.quickstart.CreateConnectorRequest.ConnectorSpecificConfig;
+import org.keycloak.quickstart.request.CreateConnectorRequest;
+import org.keycloak.quickstart.request.CreateConnectorRequest.ConnectorSpecificConfig;
+import org.keycloak.quickstart.request.CreateCredentialRequest;
+import org.keycloak.quickstart.request.DocumentSetRequest;
+import org.keycloak.quickstart.request.RunConnectorOnceRequest;
+import org.keycloak.quickstart.request.UpdateConnectorCredentialRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
@@ -59,7 +64,7 @@ public class UploadController {
 
 	private String baseUrl = "https://chitchato.danswer.ai/";
 
-	private String fastapiusersauth = "cayVRKhdgA5PdgsFV2fqqxp12UA6h6ueRaJMdhzraZY";
+	private String fastapiusersauth = "oAIZapG2UL30sOzNP_GeRI-p591zIT1bzF_6JLxr1BM";
 
 	private final RestTemplate restTemplate;
 
@@ -156,27 +161,42 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector/run-once", HttpMethod.POST, entity, String.class);
 	}
 
+	@PostMapping("/create-document-set")
+	public ResponseEntity<String> createDocumentSet(@RequestBody DocumentSetRequest documentSetRequest) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.setAccept(Collections.singletonList(MediaType.ALL));
+		headers.set("Accept", "application/json");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
+
+		HttpEntity<DocumentSetRequest> entity = new HttpEntity<>(documentSetRequest, headers);
+		return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.POST, entity, String.class);
+	}
+
 	@PostMapping("/combined-endpoint")
 	public ResponseEntity<?> combinedEndpoint(@RequestParam("file") MultipartFile file) throws JsonMappingException, JsonProcessingException {
 		if (file.isEmpty()) {
 			return ResponseEntity.badRequest().body("File is empty");
 		}
 
+		String uuid = "698b6c8b-66fb-47f0-bc7c-1e4f27303dea";
+
 		// Initialize ObjectMapper for JSON parsing
     	ObjectMapper objectMapper = new ObjectMapper();
 
-		// Step 1: Upload the file
-		logger.info("Step 1: Upload the file");
+		// 1. Upload the file
+		logger.info("1. Upload the file");
 		ResponseEntity<String> uploadResponse = uploadFile(file);
 		if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
 			return ResponseEntity.status(uploadResponse.getStatusCode()).body("Failed to upload file");
 		}
 		JsonNode uploadNode = objectMapper.readTree(uploadResponse.getBody());
 		String filePaths = uploadNode.get("file_paths").get(0).asText();
-
+		logger.info("3. Create Credential. filePaths {}", filePaths);
+		
+		// 2. Create Connector
 		// Assuming filePaths is extracted correctly from the upload response
-		// Step 2: Create Connector
-		logger.info("Step 2: Create Connector");
+		logger.info("2. Create Connector");
 		CreateConnectorRequest connectorRequest = new CreateConnectorRequest();
 		connectorRequest.setName("FileConnector-" + System.currentTimeMillis());
 		connectorRequest.setSource("file");
@@ -196,9 +216,10 @@ public class UploadController {
 		// Extract connector ID from connectorResponse if needed
 		JsonNode connectorNode = objectMapper.readTree(connectorResponse.getBody());
         int connectorId = connectorNode.path("id").asInt();  // Adjust the path if necessary based on your actual JSON structure
+		logger.info("2. Create Connector. connectorId {}", connectorId);
 
-		// Step 3: Create Credential
-		logger.info("Step 3: Create Credential");
+		// 3. Create Credential
+		logger.info("3. Create Credential");
 		CreateCredentialRequest credentialRequest = new CreateCredentialRequest();
 		credentialRequest.setCredentialJson(new HashMap<>());
 		credentialRequest.setAdminPublic(true);
@@ -210,12 +231,13 @@ public class UploadController {
 		// Extract credential ID from credentialResponse if needed
 		JsonNode credentialNode = objectMapper.readTree(credentialResponse.getBody());
         int credentialId = credentialNode.path("id").asInt();  // Adjust the path if necessary based on your actual JSON structure
+		logger.info("3. Create Credential. credentialId {}", credentialId);
 
-		// Step 4: Update Connector Credential
-		logger.info("Step 4: Update Connector Credential");
+		// 4. Update Connector Credential
+		logger.info("4. Update Connector Credential");
 		UpdateConnectorCredentialRequest updateRequest = new UpdateConnectorCredentialRequest();
 		updateRequest.setId(credentialId);
-		updateRequest.setName("New Credential Name");
+		updateRequest.setName(uuid);
 		updateRequest.setPublic(true);
 
 		ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest);
@@ -223,8 +245,8 @@ public class UploadController {
 			return ResponseEntity.status(updateResponse.getStatusCode()).body("Failed to update connector credential");
 		}
 
-		// Step 5: Run Connector Once
-		logger.info("Step 5: Run Connector Once");
+		// 5. Run Connector Once
+		logger.info("5. Run Connector Once");
 		RunConnectorOnceRequest runRequest = new RunConnectorOnceRequest();
 		runRequest.setConnectorId(connectorId);
 		List<Integer> credentialIds = new ArrayList<>();
@@ -235,6 +257,32 @@ public class UploadController {
 		ResponseEntity<String> runResponse = runConnectorOnce(runRequest);
 		if (!runResponse.getStatusCode().is2xxSuccessful()) {
 			return ResponseEntity.status(runResponse.getStatusCode()).body("Failed to run connector");
+		}
+
+		// 6. Get Indexing Status		
+		logger.info("6. Get Indexing Status");
+		ResponseEntity<String> indexingResponse = getIndexingStatus();
+		if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
+		}
+		// Extract CC Pair ID from indexingResponse if needed
+		JsonNode indexingNode = objectMapper.readTree(indexingResponse.getBody());
+        JsonNode firstItem = indexingNode.get(0); // Get the first item of the array
+    	int ccPairId = firstItem.path("cc_pair_id").asInt();  // Extract the cc_pair_id
+		logger.info("6. Get Indexing Status. ccPairId {}", ccPairId);
+
+		// 7. Create Document Set
+		logger.info("7. Create Document Set");
+		DocumentSetRequest documentRequest = new DocumentSetRequest();
+		documentRequest.setName(uuid);
+		documentRequest.setDescription(uuid);
+		List<Integer> ccPairIds = new ArrayList<>();
+		ccPairIds.add(ccPairId);
+		documentRequest.setCcPairIds(ccPairIds);
+
+		ResponseEntity<String> documentResponse = createDocumentSet(documentRequest);
+		if (!documentResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(documentResponse.getStatusCode()).body("Failed to run document");
 		}
 
 		return ResponseEntity.ok("Process completed successfully");
