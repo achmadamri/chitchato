@@ -30,10 +30,14 @@ import java.util.Objects;
 import java.util.UUID;
 
 import org.keycloak.quickstart.db.entity.Connector;
+import org.keycloak.quickstart.db.entity.DocumentSet;
+import org.keycloak.quickstart.db.entity.Persona;
+import org.keycloak.quickstart.db.entity.Prompt;
 import org.keycloak.quickstart.db.repository.ConfigRepository;
 import org.keycloak.quickstart.db.repository.ConnectorRepository;
 import org.keycloak.quickstart.db.repository.DocumentSetRepository;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
+import org.keycloak.quickstart.db.repository.PromptRepository;
 import org.keycloak.quickstart.request.CreateConnectorRequest;
 import org.keycloak.quickstart.request.CreateConnectorRequest.ConnectorSpecificConfig;
 import org.keycloak.quickstart.request.CreateCredentialRequest;
@@ -100,6 +104,9 @@ public class UploadController {
 
 	@Autowired
 	private DocumentSetRepository documentSetRepository;
+
+	@Autowired
+	private PromptRepository promptRepository;
 
 	@Autowired
 	private PersonaRepository personaRepository;
@@ -377,6 +384,16 @@ public class UploadController {
 		int documentSetId = Integer.parseInt(documentResponse.getBody());
 		logger.info("7. Create Document Set. documentSetId {}", documentSetId);
 
+		DocumentSet documentSet = new DocumentSet();
+		documentSet.setUuid(this.uuid);
+		documentSet.setCreatedAt(localDateTime);
+		documentSet.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		documentSet.setDocumentSetId(documentSetId);
+		documentSet.setName(this.uuid);
+		documentSet.setDescription(this.uuid);
+		documentSet.setConnectorId(ccPairId);
+		documentSetRepository.save(documentSet);
+
 		// 8. Create Default Prompt
 		logger.info("8. Create Default Prompt");
 		DefaultPromptRequest promptRequest = new DefaultPromptRequest();
@@ -385,7 +402,7 @@ public class UploadController {
 		promptRequest.setShared(true);
 		promptRequest.setSystemPrompt(systemPrompt);
 		promptRequest.setTaskPrompt(taskPrompt);
-		promptRequest.setIncludeCitations(true);
+		promptRequest.setIncludeCitations(true);		
 
 		ResponseEntity<String> promptResponse = createDefaultPrompt(promptRequest);
 		if (!promptResponse.getStatusCode().is2xxSuccessful()) {
@@ -395,6 +412,17 @@ public class UploadController {
 		JsonNode promptNode = objectMapper.readTree(promptResponse.getBody());
         int promptId = promptNode.path("id").asInt();
 		logger.info("8. Create Default Prompt. promptId {}", promptId);
+
+		Prompt prompt = new Prompt();
+		prompt.setUuid(this.uuid);
+		prompt.setCreatedAt(localDateTime);
+		prompt.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		prompt.setPromptId(promptId);
+		prompt.setName(promptRequest.getName());
+		prompt.setDescription(promptRequest.getDescription());
+		prompt.setSystemPrompt(promptRequest.getSystemPrompt());
+		prompt.setTaskPrompt(promptRequest.getTaskPrompt());
+		promptRepository.save(prompt);
 		
 		// 9. Create Persona
 		logger.info("9. Create Persona");
@@ -417,6 +445,21 @@ public class UploadController {
 		if (!personaResponse.getStatusCode().is2xxSuccessful()) {
 			return ResponseEntity.status(personaResponse.getStatusCode()).body("Failed to run Create Persona");
 		}
+		// Extract Prompt ID from promptResponse
+		JsonNode personaNode = objectMapper.readTree(personaResponse.getBody());
+		int personaId = personaNode.path("id").asInt();
+		logger.info("9. Create Persona. personaId {}", personaId);
+
+		Persona persona = new Persona();
+		persona.setUuid(this.uuid);
+		persona.setCreatedAt(localDateTime);
+		persona.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		persona.setPersonaId(personaId);
+		persona.setName(personaRequest.getName());
+		persona.setDescription(personaRequest.getDescription());
+		persona.setPromptId(promptId);
+		persona.setDocumentSetId(documentSetId);
+		personaRepository.save(persona);
 
 		return ResponseEntity.ok("Process completed successfully");
 	}

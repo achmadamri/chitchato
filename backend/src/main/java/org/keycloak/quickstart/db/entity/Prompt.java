@@ -9,10 +9,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "document_set")
+@Table(name = "prompt")
 @Setter
 @Getter
-public class DocumentSet {    
+public class Prompt {
     @Id
     private String uuid;
 
@@ -24,11 +24,13 @@ public class DocumentSet {
 
     private String updatedBy;
 
-    private Integer documentSetId;
+    private Integer promptId;
 
     private String name;
 
     private String description;
 
-    private Integer connectorId;
+    private String systemPrompt;
+
+    private String taskPrompt;
 }

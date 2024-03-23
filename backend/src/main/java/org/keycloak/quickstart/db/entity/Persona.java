@@ -24,15 +24,13 @@ public class Persona {
 
     private String updatedBy;
 
-    private Integer id;
+    private Integer personaId;
 
     private String name;
 
     private String description;
 
-    private String systemPrompt;
-
-    private String taskPrompt;
+    private Integer promptId;
 
     private Integer documentSetId;
 }
