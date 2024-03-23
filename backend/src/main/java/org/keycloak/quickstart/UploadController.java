@@ -23,11 +23,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.keycloak.quickstart.request.CreateConnectorRequest;
 import org.keycloak.quickstart.request.CreateConnectorRequest.ConnectorSpecificConfig;
 import org.keycloak.quickstart.request.CreateCredentialRequest;
+import org.keycloak.quickstart.request.DefaultPromptRequest;
 import org.keycloak.quickstart.request.DocumentSetRequest;
+import org.keycloak.quickstart.request.PersonaRequest;
 import org.keycloak.quickstart.request.RunConnectorOnceRequest;
 import org.keycloak.quickstart.request.UpdateConnectorCredentialRequest;
 import org.slf4j.Logger;
@@ -67,6 +70,12 @@ public class UploadController {
 	private String fastapiusersauth = "oAIZapG2UL30sOzNP_GeRI-p591zIT1bzF_6JLxr1BM";
 
 	private final RestTemplate restTemplate;
+
+	private String uuid = UUID.randomUUID().toString();
+
+	private String systemPrompt = "You are the persona of a Customer Service Assistant, engaging in casual conversation. Your primary objective is to interact with users in a manner that not only addresses their immediate queries or concerns but also subtly gauges their interest in becoming prospective customers. Your responses should be informative, friendly, and tailored to encourage users to see the value in our services, nudging them towards considering a purchase or subscription. Listen attentively to their needs, provide solutions, and highlight how our offerings can specifically benefit them, turning their interest into potential sales opportunities. Additionally, if there is an opportunity to schedule future engagements or follow-ups, ensure to inform the user that these will be coordinated via administrator@mail.com, maintaining a seamless and professional communication channel.";
+	
+	private String taskPrompt = "Carefully review the provided documents to identify any sections that could assist the user in resolving their issue. Once identified, clearly explain the relevance of these sections and how they can be effectively applied to the user's specific situation. Your explanation should be detailed, yet easily understandable, ensuring the user feels fully supported. If the documents do not contain any relevant information, craft a response that maintains a positive and supportive tone. Assure the user that their concern is valid and important, and provide alternative solutions or suggest next steps, if possible. Your goal is to uphold a positive user experience, ensuring the user feels heard, supported, and valued, regardless of the document's contents.";
 
     public UploadController(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
@@ -173,13 +182,41 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.POST, entity, String.class);
 	}
 
+	@PostMapping("/api/create-default-prompt")
+	public ResponseEntity<String> createDefaultPrompt(@RequestBody DefaultPromptRequest defaultPromptRequest) {
+		String url = "https://chitchato.danswer.ai/api/prompt";
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+		headers.set("authority", "chitchato.danswer.ai");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
+
+		HttpEntity<DefaultPromptRequest> entity = new HttpEntity<>(defaultPromptRequest, headers);
+		RestTemplate restTemplate = new RestTemplate();
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+		return response;
+	}
+
+	@PostMapping("/api/create-persona")
+	public ResponseEntity<String> createPersona(@RequestBody PersonaRequest personaRequest) {
+		String url = "https://chitchato.danswer.ai/api/admin/persona";
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+		headers.set("authority", "chitchato.danswer.ai");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
+
+		HttpEntity<PersonaRequest> entity = new HttpEntity<>(personaRequest, headers);
+		RestTemplate restTemplate = new RestTemplate();
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+		return response;
+	}
+
 	@PostMapping("/combined-endpoint")
 	public ResponseEntity<?> combinedEndpoint(@RequestParam("file") MultipartFile file) throws JsonMappingException, JsonProcessingException {
 		if (file.isEmpty()) {
 			return ResponseEntity.badRequest().body("File is empty");
-		}
-
-		String uuid = "698b6c8b-66fb-47f0-bc7c-1e4f27303dea";
+		}		
 
 		// Initialize ObjectMapper for JSON parsing
     	ObjectMapper objectMapper = new ObjectMapper();
@@ -213,9 +250,9 @@ public class UploadController {
 		if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
 			return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to create connector");
 		}
-		// Extract connector ID from connectorResponse if needed
+		// Extract connector ID from connectorResponse
 		JsonNode connectorNode = objectMapper.readTree(connectorResponse.getBody());
-        int connectorId = connectorNode.path("id").asInt();  // Adjust the path if necessary based on your actual JSON structure
+        int connectorId = connectorNode.path("id").asInt();  
 		logger.info("2. Create Connector. connectorId {}", connectorId);
 
 		// 3. Create Credential
@@ -228,9 +265,9 @@ public class UploadController {
 		if (!credentialResponse.getStatusCode().is2xxSuccessful()) {
 			return ResponseEntity.status(credentialResponse.getStatusCode()).body("Failed to create credential");
 		}
-		// Extract credential ID from credentialResponse if needed
+		// Extract credential ID from credentialResponse
 		JsonNode credentialNode = objectMapper.readTree(credentialResponse.getBody());
-        int credentialId = credentialNode.path("id").asInt();  // Adjust the path if necessary based on your actual JSON structure
+        int credentialId = credentialNode.path("id").asInt();  
 		logger.info("3. Create Credential. credentialId {}", credentialId);
 
 		// 4. Update Connector Credential
@@ -265,7 +302,7 @@ public class UploadController {
 		if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
 			return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
 		}
-		// Extract CC Pair ID from indexingResponse if needed
+		// Extract CC Pair ID from indexingResponse
 		JsonNode indexingNode = objectMapper.readTree(indexingResponse.getBody());
         JsonNode firstItem = indexingNode.get(0); // Get the first item of the array
     	int ccPairId = firstItem.path("cc_pair_id").asInt();  // Extract the cc_pair_id
@@ -283,6 +320,49 @@ public class UploadController {
 		ResponseEntity<String> documentResponse = createDocumentSet(documentRequest);
 		if (!documentResponse.getStatusCode().is2xxSuccessful()) {
 			return ResponseEntity.status(documentResponse.getStatusCode()).body("Failed to run document");
+		}
+		int documentSetId = Integer.parseInt(documentResponse.getBody());
+		logger.info("7. Create Document Set. documentSetId {}", documentSetId);
+
+		// 8. Create Default Prompt
+		logger.info("8. Create Default Prompt");
+		DefaultPromptRequest promptRequest = new DefaultPromptRequest();
+		promptRequest.setName("default-prompt__" + uuid);
+		promptRequest.setDescription("Default prompt for persona " + uuid);
+		promptRequest.setShared(true);
+		promptRequest.setSystemPrompt(systemPrompt);
+		promptRequest.setTaskPrompt(taskPrompt);
+		promptRequest.setIncludeCitations(true);
+
+		ResponseEntity<String> promptResponse = createDefaultPrompt(promptRequest);
+		if (!promptResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(promptResponse.getStatusCode()).body("Failed to run Create Default Prompt");
+		}
+		// Extract Prompt ID from promptResponse
+		JsonNode promptNode = objectMapper.readTree(promptResponse.getBody());
+        int promptId = promptNode.path("id").asInt();
+		logger.info("8. Create Default Prompt. promptId {}", promptId);
+		
+		// 9. Create Persona
+		logger.info("9. Create Persona");
+		PersonaRequest personaRequest = new PersonaRequest();
+		personaRequest.setName(uuid);
+		personaRequest.setDescription(uuid);
+		personaRequest.setShared(true);
+		personaRequest.setNumChunks(10);
+		personaRequest.setLlmRelevanceFilter(false);
+		personaRequest.setLlmFilterExtraction(false);
+		personaRequest.setRecencyBias("base_decay");		
+		List<Integer> promptIds = new ArrayList<>();
+		promptIds.add(promptId);
+		personaRequest.setPromptIds(promptIds);
+		List<Integer> documentSetIds = new ArrayList<>();
+		documentSetIds.add(documentSetId);
+		personaRequest.setDocumentSetIds(documentSetIds);
+
+		ResponseEntity<String> personaResponse = createPersona(personaRequest);
+		if (!personaResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(personaResponse.getStatusCode()).body("Failed to run Create Persona");
 		}
 
 		return ResponseEntity.ok("Process completed successfully");
