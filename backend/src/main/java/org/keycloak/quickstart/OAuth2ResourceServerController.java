@@ -23,6 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class OAuth2ResourceServerController {
 
+	// Setting in the keycloak realm
+	// https://auth.chitchato.com/admin/master/console/#/chitchato/clients/43cbeeb2-d945-4c3f-98af-15825c8ef27b/authorization/resources
+
 	@GetMapping("/")
 	public String index(@AuthenticationPrincipal Jwt jwt) {
 		return String.format("Hello, %s!", jwt.getClaimAsString("preferred_username"));

@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.keycloak.quickstart.db.entity.Config;
+import org.keycloak.quickstart.db.repository.ConfigRepository;
 import org.keycloak.quickstart.request.CreateConnectorRequest;
 import org.keycloak.quickstart.request.CreateConnectorRequest.ConnectorSpecificConfig;
 import org.keycloak.quickstart.request.CreateCredentialRequest;
@@ -35,6 +37,7 @@ import org.keycloak.quickstart.request.RunConnectorOnceRequest;
 import org.keycloak.quickstart.request.UpdateConnectorCredentialRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -59,6 +62,8 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.annotation.PostConstruct;
+
 @RestController
 @RequestMapping("/upload")
 public class UploadController {
@@ -67,18 +72,27 @@ public class UploadController {
 
 	private String baseUrl = "https://chitchato.danswer.ai/";
 
-	private String fastapiusersauth = "oAIZapG2UL30sOzNP_GeRI-p591zIT1bzF_6JLxr1BM";
+	private String fastapiusersauth = "oAIZapG2UL30sOzNP_GeRI-p591zIT1bzF_6JLxr1BM";	
 
-	private final RestTemplate restTemplate;
+	private String uuid;
 
-	private String uuid = UUID.randomUUID().toString();
-
-	private String systemPrompt = "You are the persona of a Customer Service Assistant, engaging in casual conversation. Your primary objective is to interact with users in a manner that not only addresses their immediate queries or concerns but also subtly gauges their interest in becoming prospective customers. Your responses should be informative, friendly, and tailored to encourage users to see the value in our services, nudging them towards considering a purchase or subscription. Listen attentively to their needs, provide solutions, and highlight how our offerings can specifically benefit them, turning their interest into potential sales opportunities. Additionally, encourage users to leave their contact information if they are interested in learning more, ensuring them that our team will reach out to them for further engagement. When users share their contact details, acknowledge this by confirming that their information has been received and a team member will contact them shortly. Include a text flag like [ASD] in your response to indicate that the conversation requires human follow-up. This approach ensures a proactive and personalized connection with potential customers, fostering a seamless transition from initial interest to active engagement.";
+	private String systemPrompt;
 	
-	private String taskPrompt = "Carefully review the provided documents to identify any sections that could assist the user in resolving their issue. Once identified, clearly explain the relevance of these sections and how they can be effectively applied to the user's specific situation. Your explanation should be detailed, yet easily understandable, ensuring the user feels fully supported. If the documents do not contain any relevant information, craft a response that maintains a positive and supportive tone. Assure the user that their concern is valid and important, and provide alternative solutions or suggest next steps, if possible. Your goal is to uphold a positive user experience, ensuring the user feels heard, supported, and valued, regardless of the document's contents.";
+	private String taskPrompt;
 
-    public UploadController(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+	@Autowired
+	private RestTemplate restTemplate;
+
+	@Autowired
+	private ConfigRepository configRepository;
+
+	@PostConstruct
+    private void init() {
+        systemPrompt = configRepository.findById("system_prompt").get().getValue();
+        logger.info("systemPrompt: {}", systemPrompt);
+
+        taskPrompt = configRepository.findById("task_prompt").get().getValue();
+        logger.info("taskPrompt: {}", taskPrompt);
     }
 
 	@GetMapping("/indexing-status")
@@ -91,7 +105,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector/indexing-status?secondary_index=false", HttpMethod.GET, entity, String.class);
 	}
 
-	@PostMapping("/upload-file")
+	// @PostMapping("/upload-file")
 	public ResponseEntity<String> uploadFile(@RequestParam("files") MultipartFile file) {
 		// Check if the file is empty or not
 		if (file.isEmpty()) {
@@ -212,14 +226,18 @@ public class UploadController {
 		return response;
 	}
 
-	@PostMapping("/combined-endpoint")
-	public ResponseEntity<?> combinedEndpoint(@RequestParam("file") MultipartFile file) throws JsonMappingException, JsonProcessingException {
+	@PostMapping("/upload-combined")
+	public ResponseEntity<?> uploadCombined(@RequestParam("file") MultipartFile file) throws JsonMappingException, JsonProcessingException {
 		if (file.isEmpty()) {
 			return ResponseEntity.badRequest().body("File is empty");
 		}		
 
 		// Initialize ObjectMapper for JSON parsing
     	ObjectMapper objectMapper = new ObjectMapper();
+
+		// Initialize uuid
+		this.uuid = UUID.randomUUID().toString();
+		logger.info("uuid: {}", this.uuid);
 
 		// 1. Upload the file
 		logger.info("1. Upload the file");
@@ -274,7 +292,7 @@ public class UploadController {
 		logger.info("4. Update Connector Credential");
 		UpdateConnectorCredentialRequest updateRequest = new UpdateConnectorCredentialRequest();
 		updateRequest.setId(credentialId);
-		updateRequest.setName(uuid);
+		updateRequest.setName(this.uuid);
 		updateRequest.setPublic(true);
 
 		ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest);
@@ -311,8 +329,8 @@ public class UploadController {
 		// 7. Create Document Set
 		logger.info("7. Create Document Set");
 		DocumentSetRequest documentRequest = new DocumentSetRequest();
-		documentRequest.setName(uuid);
-		documentRequest.setDescription(uuid);
+		documentRequest.setName(this.uuid);
+		documentRequest.setDescription(this.uuid);
 		List<Integer> ccPairIds = new ArrayList<>();
 		ccPairIds.add(ccPairId);
 		documentRequest.setCcPairIds(ccPairIds);
@@ -327,8 +345,8 @@ public class UploadController {
 		// 8. Create Default Prompt
 		logger.info("8. Create Default Prompt");
 		DefaultPromptRequest promptRequest = new DefaultPromptRequest();
-		promptRequest.setName("default-prompt__" + uuid);
-		promptRequest.setDescription("Default prompt for persona " + uuid);
+		promptRequest.setName("default-prompt__" + this.uuid);
+		promptRequest.setDescription("Default prompt for persona " + this.uuid);
 		promptRequest.setShared(true);
 		promptRequest.setSystemPrompt(systemPrompt);
 		promptRequest.setTaskPrompt(taskPrompt);
@@ -346,8 +364,8 @@ public class UploadController {
 		// 9. Create Persona
 		logger.info("9. Create Persona");
 		PersonaRequest personaRequest = new PersonaRequest();
-		personaRequest.setName(uuid);
-		personaRequest.setDescription(uuid);
+		personaRequest.setName(this.uuid);
+		personaRequest.setDescription(this.uuid);
 		personaRequest.setShared(true);
 		personaRequest.setNumChunks(10);
 		personaRequest.setLlmRelevanceFilter(false);
