@@ -81,7 +81,7 @@ public class UploadController {
 
 	private String baseUrl = "https://chitchato.danswer.ai/";
 
-	private String fastapiusersauth = "oAIZapG2UL30sOzNP_GeRI-p591zIT1bzF_6JLxr1BM";	
+	private String fastapiusersauth = "eipqT7YKEGIOUp7QlGTQ9rcLIyoU6fO3GjqxdD21mTk";	
 
 	private String uuid;
 
@@ -187,8 +187,9 @@ public class UploadController {
 		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
 		HttpEntity<UpdateConnectorCredentialRequest> entity = new HttpEntity<>(updateConnectorCredentialRequest, headers);
-		int id = updateConnectorCredentialRequest.getId();
-		return restTemplate.exchange(baseUrl + "/api/manage/connector/" + id + "/credential/" + id, HttpMethod.PUT, entity, String.class);
+		int connectorId = updateConnectorCredentialRequest.getConnectorId();
+		int credentialId = updateConnectorCredentialRequest.getCredentialId();
+		return restTemplate.exchange(baseUrl + "/api/manage/connector/" + connectorId + "/credential/" + credentialId, HttpMethod.PUT, entity, String.class);
 	}
 
 	@PostMapping("/run-connector-once")
@@ -265,7 +266,7 @@ public class UploadController {
 		}
 		JsonNode uploadNode = objectMapper.readTree(uploadResponse.getBody());
 		String filePaths = uploadNode.get("file_paths").get(0).asText();
-		logger.info("3. Create Credential. filePaths {}", filePaths);
+		logger.info("1. Upload the file. filePaths {}", filePaths);
 		
 		// 2. Create Connector
 		// Assuming filePaths is extracted correctly from the upload response
@@ -324,7 +325,8 @@ public class UploadController {
 		// 4. Update Connector Credential
 		logger.info("4. Update Connector Credential");
 		UpdateConnectorCredentialRequest updateRequest = new UpdateConnectorCredentialRequest();
-		updateRequest.setId(credentialId);
+		updateRequest.setConnectorId(connectorId);
+		updateRequest.setCredentialId(credentialId);
 		updateRequest.setName(this.uuid);
 		updateRequest.setPublic(true);
 
