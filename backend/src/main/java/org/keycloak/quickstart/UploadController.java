@@ -18,15 +18,22 @@ package org.keycloak.quickstart;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-import org.keycloak.quickstart.db.entity.Config;
+import org.keycloak.quickstart.db.entity.Connector;
 import org.keycloak.quickstart.db.repository.ConfigRepository;
+import org.keycloak.quickstart.db.repository.ConnectorRepository;
+import org.keycloak.quickstart.db.repository.DocumentSetRepository;
+import org.keycloak.quickstart.db.repository.PersonaRepository;
 import org.keycloak.quickstart.request.CreateConnectorRequest;
 import org.keycloak.quickstart.request.CreateConnectorRequest.ConnectorSpecificConfig;
 import org.keycloak.quickstart.request.CreateCredentialRequest;
@@ -45,6 +52,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -85,6 +94,15 @@ public class UploadController {
 
 	@Autowired
 	private ConfigRepository configRepository;
+
+	@Autowired
+	private ConnectorRepository connectorRepository;
+
+	@Autowired
+	private DocumentSetRepository documentSetRepository;
+
+	@Autowired
+	private PersonaRepository personaRepository;
 
 	@PostConstruct
     private void init() {
@@ -227,7 +245,7 @@ public class UploadController {
 	}
 
 	@PostMapping("/upload-combined")
-	public ResponseEntity<?> uploadCombined(@RequestParam("file") MultipartFile file) throws JsonMappingException, JsonProcessingException {
+	public ResponseEntity<?> uploadCombined(@RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
 		if (file.isEmpty()) {
 			return ResponseEntity.badRequest().body("File is empty");
 		}		
@@ -262,7 +280,7 @@ public class UploadController {
 		connectorSpecificConfig.setFileLocations(fileLocations);
 		connectorRequest.setConnectorSpecificConfig(connectorSpecificConfig);
 		connectorRequest.setDisabled(false);
-		connectorRequest.setRefreshFreq(null);
+		connectorRequest.setRefreshFreq(null);		
 
 		ResponseEntity<String> connectorResponse = createConnector(connectorRequest);
 		if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
@@ -272,6 +290,21 @@ public class UploadController {
 		JsonNode connectorNode = objectMapper.readTree(connectorResponse.getBody());
         int connectorId = connectorNode.path("id").asInt();  
 		logger.info("2. Create Connector. connectorId {}", connectorId);
+
+		// Create a Date instance
+		Date now = new Date();
+
+		// Convert Date to LocalDateTime
+		ZonedDateTime zdt = now.toInstant().atZone(ZoneId.systemDefault());
+		LocalDateTime localDateTime = zdt.toLocalDateTime();
+
+		Connector connector = new Connector();
+		connector.setUuid(this.uuid);
+		connector.setCreatedAt(localDateTime);
+		connector.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		connector.setConnectorId(connectorId);
+		connector.setFileNames(file.getOriginalFilename());
+		connectorRepository.save(connector);
 
 		// 3. Create Credential
 		logger.info("3. Create Credential");
