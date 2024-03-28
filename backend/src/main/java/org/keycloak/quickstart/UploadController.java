@@ -27,6 +27,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.keycloak.quickstart.db.entity.Connector;
@@ -43,6 +44,7 @@ import org.keycloak.quickstart.request.CreateConnectorRequest.ConnectorSpecificC
 import org.keycloak.quickstart.request.CreateCredentialRequest;
 import org.keycloak.quickstart.request.DefaultPromptRequest;
 import org.keycloak.quickstart.request.DocumentSetRequest;
+import org.keycloak.quickstart.request.DocumentSetUpdateRequest;
 import org.keycloak.quickstart.request.PersonaRequest;
 import org.keycloak.quickstart.request.RunConnectorOnceRequest;
 import org.keycloak.quickstart.request.UpdateConnectorCredentialRequest;
@@ -50,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.data.domain.Example;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -60,9 +63,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -77,6 +78,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.annotation.PostConstruct;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
 @RestController
 @RequestMapping("/upload")
 public class UploadController {
@@ -86,8 +95,6 @@ public class UploadController {
 	private String baseUrl = "https://chitchato.danswer.ai/";
 
 	private String fastapiusersauth = "eipqT7YKEGIOUp7QlGTQ9rcLIyoU6fO3GjqxdD21mTk";	
-
-	private String uuid;
 
 	private String systemPrompt;
 	
@@ -111,6 +118,12 @@ public class UploadController {
 	@Autowired
 	private PersonaRepository personaRepository;
 
+	private final WebClient webClient;
+
+    public UploadController(WebClient.Builder webClientBuilder) {
+        this.webClient = webClientBuilder.baseUrl(baseUrl).build();
+    }
+
 	@PostConstruct
     private void init() {
         systemPrompt = configRepository.findById("system_prompt").get().getValue();
@@ -120,7 +133,7 @@ public class UploadController {
         logger.info("taskPrompt: {}", taskPrompt);
     }
 
-	@GetMapping("/indexing-status")
+	// @GetMapping("/indexing-status")
 	public ResponseEntity<String> getIndexingStatus() {
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Accept", "application/json");
@@ -164,7 +177,7 @@ public class UploadController {
 		return convFile;
 	}
 
-	@PostMapping("/create-connector")
+	// @PostMapping("/create-connector")
 	public ResponseEntity<String> createConnector(@RequestBody CreateConnectorRequest createConnectorRequest) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -175,7 +188,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector", HttpMethod.POST, entity, String.class);
 	}
 
-	@PostMapping("/create-credential")
+	// @PostMapping("/create-credential")
 	public ResponseEntity<String> createCredential(@RequestBody CreateCredentialRequest createCredentialRequest) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -186,7 +199,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/credential", HttpMethod.POST, entity, String.class);
 	}
 
-	@PutMapping("/update-connector-credential")
+	// @PutMapping("/update-connector-credential")
 	public ResponseEntity<String> updateConnectorCredential(@RequestBody UpdateConnectorCredentialRequest updateConnectorCredentialRequest) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -199,7 +212,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/connector/" + connectorId + "/credential/" + credentialId, HttpMethod.PUT, entity, String.class);
 	}
 
-	@PostMapping("/run-connector-once")
+	// @PostMapping("/run-connector-once")
 	public ResponseEntity<String> runConnectorOnce(@RequestBody RunConnectorOnceRequest runOnceRequest) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -210,7 +223,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector/run-once", HttpMethod.POST, entity, String.class);
 	}
 
-	@PostMapping("/create-document-set")
+	// @PostMapping("/create-document-set")
 	public ResponseEntity<String> createDocumentSet(@RequestBody DocumentSetRequest documentSetRequest) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -219,10 +232,34 @@ public class UploadController {
 		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
 		HttpEntity<DocumentSetRequest> entity = new HttpEntity<>(documentSetRequest, headers);
-		return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.POST, entity, String.class);
+		return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.PATCH, entity, String.class);
 	}
 
-	@PostMapping("/api/create-default-prompt")
+	// @PatchMapping("/update-document-set")
+    // public ResponseEntity<String> updateDocumentSet(@RequestBody DocumentSetUpdateRequest documentSetUpdateRequest) {
+    //     HttpHeaders headers = new HttpHeaders();
+    //     headers.setContentType(MediaType.APPLICATION_JSON);
+    //     headers.setAccept(Collections.singletonList(MediaType.ALL));
+	// 	headers.set("Accept", "application/json");
+	// 	headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
+
+    //     HttpEntity<DocumentSetUpdateRequest> entity = new HttpEntity<>(documentSetUpdateRequest, headers);
+	// 	return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.PATCH, entity, String.class);
+    // }
+
+	// @PatchMapping("/update-document-set")
+    public Mono<String> updateDocumentSet(@RequestBody DocumentSetUpdateRequest documentSetUpdateRequest) {
+        return this.webClient.patch()
+                .uri("/api/manage/admin/document-set")
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .header("cookie", "fastapiusersauth=" + fastapiusersauth)
+                .bodyValue(documentSetUpdateRequest)
+                .retrieve() // Initiate the request
+                .bodyToMono(String.class); // Convert the response body to String
+    }
+
+	// @PostMapping("/api/create-default-prompt")
 	public ResponseEntity<String> createDefaultPrompt(@RequestBody DefaultPromptRequest defaultPromptRequest) {
 		String url = "https://chitchato.danswer.ai/api/prompt";
 		HttpHeaders headers = new HttpHeaders();
@@ -237,7 +274,7 @@ public class UploadController {
 		return response;
 	}
 
-	@PostMapping("/api/create-persona")
+	// @PostMapping("/api/create-persona")
 	public ResponseEntity<String> createPersona(@RequestBody PersonaRequest personaRequest) {
 		String url = "https://chitchato.danswer.ai/api/admin/persona";
 		HttpHeaders headers = new HttpHeaders();
@@ -261,207 +298,398 @@ public class UploadController {
 		// Initialize ObjectMapper for JSON parsing
     	ObjectMapper objectMapper = new ObjectMapper();
 
+		// Initialize username
+		String username = jwt.getClaimAsString("preferred_username");
+		logger.info("username: {}", username);
+
 		// Initialize uuid
-		this.uuid = UUID.randomUUID().toString();
-		logger.info("uuid: {}", this.uuid);
+		String uuid = UUID.randomUUID().toString();
+		logger.info("uuid: {}", uuid);
 
-		// 1. Upload the file
-		logger.info("1. Upload the file");
-		ResponseEntity<String> uploadResponse = uploadFile(file);
-		if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
-			return ResponseEntity.status(uploadResponse.getStatusCode()).body("Failed to upload file");
-		}
-		JsonNode uploadNode = objectMapper.readTree(uploadResponse.getBody());
-		String filePaths = uploadNode.get("file_paths").get(0).asText();
-		logger.info("1. Upload the file. filePaths {}", filePaths);
-		
-		// 2. Create Connector
-		// Assuming filePaths is extracted correctly from the upload response
-		logger.info("2. Create Connector");
-		CreateConnectorRequest connectorRequest = new CreateConnectorRequest();
-		connectorRequest.setName("FileConnector-" + System.currentTimeMillis());
-		connectorRequest.setSource("file");
-		connectorRequest.setInputType("load_state");
-		ConnectorSpecificConfig connectorSpecificConfig = new ConnectorSpecificConfig();
-		List<String> fileLocations = new ArrayList<>();
-		fileLocations.add(filePaths);
-		connectorSpecificConfig.setFileLocations(fileLocations);
-		connectorRequest.setConnectorSpecificConfig(connectorSpecificConfig);
-		connectorRequest.setDisabled(false);
-		connectorRequest.setRefreshFreq(null);		
+		// Check is there any Persona exist with this user
+		Persona personaExample = new Persona();
+		personaExample.setCreatedBy(username);
+		Optional<Persona> personaOptional = personaRepository.findOne(Example.of(personaExample));
+		if (personaOptional.isPresent()) {
+			// 1. Upload the file
+			logger.info("1. Upload the file");
+			ResponseEntity<String> uploadResponse = uploadFile(file);
+			if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(uploadResponse.getStatusCode()).body("Failed to upload file");
+			}
+			JsonNode uploadNode = objectMapper.readTree(uploadResponse.getBody());
+			String filePaths = uploadNode.get("file_paths").get(0).asText();
+			logger.info("1. Upload the file. filePaths {}", filePaths);
 
-		ResponseEntity<String> connectorResponse = createConnector(connectorRequest);
-		if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
-			return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to create connector");
-		}
-		// Extract connector ID from connectorResponse
-		JsonNode connectorNode = objectMapper.readTree(connectorResponse.getBody());
-        int connectorId = connectorNode.path("id").asInt();  
-		logger.info("2. Create Connector. connectorId {}", connectorId);
+			// 2. Create Connector
+			// Assuming filePaths is extracted correctly from the upload response
+			logger.info("2. Create Connector");
+			CreateConnectorRequest connectorRequest = new CreateConnectorRequest();
+			connectorRequest.setName("FileConnector-" + System.currentTimeMillis());
+			connectorRequest.setSource("file");
+			connectorRequest.setInputType("load_state");
+			ConnectorSpecificConfig connectorSpecificConfig = new ConnectorSpecificConfig();
+			List<String> fileLocations = new ArrayList<>();
+			fileLocations.add(filePaths);
+			connectorSpecificConfig.setFileLocations(fileLocations);
+			connectorRequest.setConnectorSpecificConfig(connectorSpecificConfig);
+			connectorRequest.setDisabled(false);
+			connectorRequest.setRefreshFreq(null);		
 
-		// Create a Date instance
-		Date now = new Date();
+			ResponseEntity<String> connectorResponse = createConnector(connectorRequest);
+			if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to create connector");
+			}
+			// Extract connector ID from connectorResponse
+			JsonNode connectorNode = objectMapper.readTree(connectorResponse.getBody());
+			int connectorId = connectorNode.path("id").asInt();  
+			logger.info("2. Create Connector. connectorId {}", connectorId);
 
-		// Convert Date to LocalDateTime
-		ZonedDateTime zdt = now.toInstant().atZone(ZoneId.systemDefault());
-		LocalDateTime localDateTime = zdt.toLocalDateTime();
+			// Create a Date instance
+			Date now = new Date();
 
-		Connector connector = new Connector();
-		connector.setUuid(this.uuid);
-		connector.setCreatedAt(localDateTime);
-		connector.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-		connector.setConnectorId(connectorId);
-		connector.setFileNames(file.getOriginalFilename());
-		connectorRepository.save(connector);
+			// Convert Date to LocalDateTime
+			ZonedDateTime zdt = now.toInstant().atZone(ZoneId.systemDefault());
+			LocalDateTime localDateTime = zdt.toLocalDateTime();
 
-		// 3. Create Credential
-		logger.info("3. Create Credential");
-		CreateCredentialRequest credentialRequest = new CreateCredentialRequest();
-		credentialRequest.setCredentialJson(new HashMap<>());
-		credentialRequest.setAdminPublic(true);
+			Connector connector = new Connector();
+			connector.setUuid(uuid);
+			connector.setCreatedAt(localDateTime);
+			connector.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+			connector.setConnectorId(connectorId);
+			connector.setFileNames(file.getOriginalFilename());
+			connectorRepository.save(connector);
 
-		ResponseEntity<String> credentialResponse = createCredential(credentialRequest);
-		if (!credentialResponse.getStatusCode().is2xxSuccessful()) {
-			return ResponseEntity.status(credentialResponse.getStatusCode()).body("Failed to create credential");
-		}
-		// Extract credential ID from credentialResponse
-		JsonNode credentialNode = objectMapper.readTree(credentialResponse.getBody());
-        int credentialId = credentialNode.path("id").asInt();  
-		logger.info("3. Create Credential. credentialId {}", credentialId);
+			// 3. Create Credential
+			logger.info("3. Create Credential");
+			CreateCredentialRequest credentialRequest = new CreateCredentialRequest();
+			credentialRequest.setCredentialJson(new HashMap<>());
+			credentialRequest.setAdminPublic(true);
 
-		// 4. Update Connector Credential
-		logger.info("4. Update Connector Credential");
-		UpdateConnectorCredentialRequest updateRequest = new UpdateConnectorCredentialRequest();
-		updateRequest.setConnectorId(connectorId);
-		updateRequest.setCredentialId(credentialId);
-		updateRequest.setName(this.uuid);
-		updateRequest.setPublic(true);
+			ResponseEntity<String> credentialResponse = createCredential(credentialRequest);
+			if (!credentialResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(credentialResponse.getStatusCode()).body("Failed to create credential");
+			}
+			// Extract credential ID from credentialResponse
+			JsonNode credentialNode = objectMapper.readTree(credentialResponse.getBody());
+			int credentialId = credentialNode.path("id").asInt();  
+			logger.info("3. Create Credential. credentialId {}", credentialId);
 
-		ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest);
-		if (!updateResponse.getStatusCode().is2xxSuccessful()) {
-			return ResponseEntity.status(updateResponse.getStatusCode()).body("Failed to update connector credential");
-		}
+			// 4. Update Connector Credential
+			logger.info("4. Update Connector Credential");
+			UpdateConnectorCredentialRequest updateRequest = new UpdateConnectorCredentialRequest();
+			updateRequest.setConnectorId(connectorId);
+			updateRequest.setCredentialId(credentialId);
+			updateRequest.setName(uuid);
+			updateRequest.setPublic(true);
 
-		// 5. Run Connector Once
-		logger.info("5. Run Connector Once");
-		RunConnectorOnceRequest runRequest = new RunConnectorOnceRequest();
-		runRequest.setConnectorId(connectorId);
-		List<Integer> credentialIds = new ArrayList<>();
-		credentialIds.add(credentialId);
-		runRequest.setCredentialIds(credentialIds);
-		runRequest.setFromBeginning(false);
+			ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest);
+			if (!updateResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(updateResponse.getStatusCode()).body("Failed to update connector credential");
+			}
 
-		ResponseEntity<String> runResponse = runConnectorOnce(runRequest);
-		if (!runResponse.getStatusCode().is2xxSuccessful()) {
-			return ResponseEntity.status(runResponse.getStatusCode()).body("Failed to run connector");
-		}
+			// 5. Run Connector Once
+			logger.info("5. Run Connector Once");
+			RunConnectorOnceRequest runRequest = new RunConnectorOnceRequest();
+			runRequest.setConnectorId(connectorId);
+			List<Integer> credentialIds = new ArrayList<>();
+			credentialIds.add(credentialId);
+			runRequest.setCredentialIds(credentialIds);
+			runRequest.setFromBeginning(false);
 
-		// 6. Get Indexing Status		
-		logger.info("6. Get Indexing Status");
-		ResponseEntity<String> indexingResponse = getIndexingStatus();
-		if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
-			return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
-		}
-		// Extract CC Pair ID from indexingResponse
-		JsonNode indexingNode = objectMapper.readTree(indexingResponse.getBody());
-        JsonNode firstItem = indexingNode.get(0); // Get the first item of the array
-    	int ccPairId = firstItem.path("cc_pair_id").asInt();  // Extract the cc_pair_id
-		logger.info("6. Get Indexing Status. ccPairId {}", ccPairId);
+			ResponseEntity<String> runResponse = runConnectorOnce(runRequest);
+			if (!runResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(runResponse.getStatusCode()).body("Failed to run connector");
+			}
 
-		// 7. Create Document Set
-		logger.info("7. Create Document Set");
-		DocumentSetRequest documentRequest = new DocumentSetRequest();
-		documentRequest.setName(this.uuid);
-		documentRequest.setDescription(this.uuid);
-		List<Integer> ccPairIds = new ArrayList<>();
-		ccPairIds.add(ccPairId);
-		documentRequest.setCcPairIds(ccPairIds);
+			// 6. Get Indexing Status		
+			logger.info("6. Get Indexing Status");
+			ResponseEntity<String> indexingResponse = getIndexingStatus();
+			if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
+			}
+			// Extract CC Pair ID from indexingResponse
+			// Parse the JSON array from the response body
+			JsonNode indexingArray = objectMapper.readTree(indexingResponse.getBody());
 
-		ResponseEntity<String> documentResponse = createDocumentSet(documentRequest);
-		if (!documentResponse.getStatusCode().is2xxSuccessful()) {
-			return ResponseEntity.status(documentResponse.getStatusCode()).body("Failed to run document");
-		}
-		int documentSetId = Integer.parseInt(documentResponse.getBody());
-		logger.info("7. Create Document Set. documentSetId {}", documentSetId);
+			// Initialize variable to store the found cc_pair_id
+			int ccPairId = -1; // Default to -1 or another sentinel value to indicate not found
 
-		DocumentSet documentSet = new DocumentSet();
-		documentSet.setUuid(this.uuid);
-		documentSet.setCreatedAt(localDateTime);
-		documentSet.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-		documentSet.setDocumentSetId(documentSetId);
-		documentSet.setName(this.uuid);
-		documentSet.setDescription(this.uuid);
-		documentSet.setConnectorId(ccPairId);
-		documentSetRepository.save(documentSet);
+			// Iterate through each item in the array
+			for (JsonNode item : indexingArray) {
+				// Check if the name matches the given name
+				if (item.path("name").asText().equals(uuid)) {
+					// If a match is found, extract the cc_pair_id
+					ccPairId = item.path("cc_pair_id").asInt();
+					// Log the found ccPairId
+					logger.info("6. Get Indexing Status. ccPairId {}", ccPairId);
+					// Break out of the loop if you only expect one match
+					break;
+				}
+			}
 
-		// 8. Create Default Prompt
-		logger.info("8. Create Default Prompt");
-		DefaultPromptRequest promptRequest = new DefaultPromptRequest();
-		promptRequest.setName("default-prompt__" + this.uuid);
-		promptRequest.setDescription("Default prompt for persona " + this.uuid);
-		promptRequest.setShared(true);
-		promptRequest.setSystemPrompt(systemPrompt);
-		promptRequest.setTaskPrompt(taskPrompt);
-		promptRequest.setIncludeCitations(true);		
+			// Check if the ccPairId was found
+			if (ccPairId == -1) {
+				// Handle the case where the given name was not found in the array
+				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Given name '" + uuid + "' not found in the indexing response.");
+			}
 
-		ResponseEntity<String> promptResponse = createDefaultPrompt(promptRequest);
-		if (!promptResponse.getStatusCode().is2xxSuccessful()) {
-			return ResponseEntity.status(promptResponse.getStatusCode()).body("Failed to run Create Default Prompt");
-		}
-		// Extract Prompt ID from promptResponse
-		JsonNode promptNode = objectMapper.readTree(promptResponse.getBody());
-        int promptId = promptNode.path("id").asInt();
-		logger.info("8. Create Default Prompt. promptId {}", promptId);
+			// 7. Update Document Set
+			logger.info("7. Update Document Set");
+			DocumentSet documentSetExample = new DocumentSet();
+			documentSetExample.setCreatedBy(username);
+			Optional<DocumentSet> documentSetOptional = documentSetRepository.findOne(Example.of(documentSetExample));
 
-		Prompt prompt = new Prompt();
-		prompt.setUuid(this.uuid);
-		prompt.setCreatedAt(localDateTime);
-		prompt.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-		prompt.setPromptId(promptId);
-		prompt.setName(promptRequest.getName());
-		prompt.setDescription(promptRequest.getDescription());
-		prompt.setSystemPrompt(promptRequest.getSystemPrompt());
-		prompt.setTaskPrompt(promptRequest.getTaskPrompt());
-		promptRepository.save(prompt);
-		
-		// 9. Create Persona
-		logger.info("9. Create Persona");
-		PersonaRequest personaRequest = new PersonaRequest();
-		personaRequest.setName(this.uuid);
-		personaRequest.setDescription(this.uuid);
-		personaRequest.setShared(true);
-		personaRequest.setNumChunks(10);
-		personaRequest.setLlmRelevanceFilter(false);
-		personaRequest.setLlmFilterExtraction(false);
-		personaRequest.setRecencyBias("base_decay");		
-		List<Integer> promptIds = new ArrayList<>();
-		promptIds.add(promptId);
-		personaRequest.setPromptIds(promptIds);
-		List<Integer> documentSetIds = new ArrayList<>();
-		documentSetIds.add(documentSetId);
-		personaRequest.setDocumentSetIds(documentSetIds);
+			DocumentSetUpdateRequest documentSetUpdateRequest = new DocumentSetUpdateRequest();
+			documentSetUpdateRequest.setId(documentSetOptional.get().getDocumentSetId());
+			documentSetUpdateRequest.setDescription(documentSetOptional.get().getUuid());
+			List<Integer> ccPairIds = new ArrayList<>();
+			ccPairIds.add(ccPairId);
+			documentSetUpdateRequest.setCcPairIds(ccPairIds);
 
-		ResponseEntity<String> personaResponse = createPersona(personaRequest);
-		if (!personaResponse.getStatusCode().is2xxSuccessful()) {
-			return ResponseEntity.status(personaResponse.getStatusCode()).body("Failed to run Create Persona");
-		}
-		// Extract Prompt ID from promptResponse
-		JsonNode personaNode = objectMapper.readTree(personaResponse.getBody());
-		int personaId = personaNode.path("id").asInt();
-		logger.info("9. Create Persona. personaId {}", personaId);
+			updateDocumentSet(documentSetUpdateRequest)
+			.flatMap(response -> {
+				try {
+					// Assuming the response is the document set ID as a string
+					// int documentSetId = Integer.parseInt(response);
+					// logger.info("7. Update Document Set. documentSetId {}", documentSetId);
+					// return Mono.just(ResponseEntity.ok(documentSetId));
+					return Mono.just(ResponseEntity.ok(HttpStatus.OK));
+				} catch (NumberFormatException e) {
+					logger.error("Failed to parse documentSetId from response", e);
+					return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to run document"));
+				}
+			})
+			.subscribe(result -> {
+				// This is where you would handle the result
+				// Note: This is a simplified example. In a real application, you should carefully consider where and how to subscribe to avoid blocking operations and to handle context properly.
+				if (!result.getStatusCode().is2xxSuccessful()) {
+					logger.error("Failed to update document set");
+				} else {
+					logger.info("Successfully updated document set with ID: {}", result.getBody());
+				}
+			});
 
-		Persona persona = new Persona();
-		persona.setUuid(this.uuid);
-		persona.setCreatedAt(localDateTime);
-		persona.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-		persona.setPersonaId(personaId);
-		persona.setName(personaRequest.getName());
-		persona.setDescription(personaRequest.getDescription());
-		persona.setPromptId(promptId);
-		persona.setDocumentSetId(documentSetId);
-		personaRepository.save(persona);
+			return ResponseEntity.ok("Process completed successfully");
+		} else {
+			// 1. Upload the file
+			logger.info("1. Upload the file");
+			ResponseEntity<String> uploadResponse = uploadFile(file);
+			if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(uploadResponse.getStatusCode()).body("Failed to upload file");
+			}
+			JsonNode uploadNode = objectMapper.readTree(uploadResponse.getBody());
+			String filePaths = uploadNode.get("file_paths").get(0).asText();
+			logger.info("1. Upload the file. filePaths {}", filePaths);
 
-		return ResponseEntity.ok("Process completed successfully");
+			// 2. Create Connector
+			// Assuming filePaths is extracted correctly from the upload response
+			logger.info("2. Create Connector");
+			CreateConnectorRequest connectorRequest = new CreateConnectorRequest();
+			connectorRequest.setName("FileConnector-" + System.currentTimeMillis());
+			connectorRequest.setSource("file");
+			connectorRequest.setInputType("load_state");
+			ConnectorSpecificConfig connectorSpecificConfig = new ConnectorSpecificConfig();
+			List<String> fileLocations = new ArrayList<>();
+			fileLocations.add(filePaths);
+			connectorSpecificConfig.setFileLocations(fileLocations);
+			connectorRequest.setConnectorSpecificConfig(connectorSpecificConfig);
+			connectorRequest.setDisabled(false);
+			connectorRequest.setRefreshFreq(null);		
+
+			ResponseEntity<String> connectorResponse = createConnector(connectorRequest);
+			if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to create connector");
+			}
+			// Extract connector ID from connectorResponse
+			JsonNode connectorNode = objectMapper.readTree(connectorResponse.getBody());
+			int connectorId = connectorNode.path("id").asInt();  
+			logger.info("2. Create Connector. connectorId {}", connectorId);
+
+			// Create a Date instance
+			Date now = new Date();
+
+			// Convert Date to LocalDateTime
+			ZonedDateTime zdt = now.toInstant().atZone(ZoneId.systemDefault());
+			LocalDateTime localDateTime = zdt.toLocalDateTime();
+
+			Connector connector = new Connector();
+			connector.setUuid(uuid);
+			connector.setCreatedAt(localDateTime);
+			connector.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+			connector.setConnectorId(connectorId);
+			connector.setFileNames(file.getOriginalFilename());
+			connectorRepository.save(connector);
+
+			// 3. Create Credential
+			logger.info("3. Create Credential");
+			CreateCredentialRequest credentialRequest = new CreateCredentialRequest();
+			credentialRequest.setCredentialJson(new HashMap<>());
+			credentialRequest.setAdminPublic(true);
+
+			ResponseEntity<String> credentialResponse = createCredential(credentialRequest);
+			if (!credentialResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(credentialResponse.getStatusCode()).body("Failed to create credential");
+			}
+			// Extract credential ID from credentialResponse
+			JsonNode credentialNode = objectMapper.readTree(credentialResponse.getBody());
+			int credentialId = credentialNode.path("id").asInt();  
+			logger.info("3. Create Credential. credentialId {}", credentialId);
+
+			// 4. Update Connector Credential
+			logger.info("4. Update Connector Credential");
+			UpdateConnectorCredentialRequest updateRequest = new UpdateConnectorCredentialRequest();
+			updateRequest.setConnectorId(connectorId);
+			updateRequest.setCredentialId(credentialId);
+			updateRequest.setName(uuid);
+			updateRequest.setPublic(true);
+
+			ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest);
+			if (!updateResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(updateResponse.getStatusCode()).body("Failed to update connector credential");
+			}
+
+			// 5. Run Connector Once
+			logger.info("5. Run Connector Once");
+			RunConnectorOnceRequest runRequest = new RunConnectorOnceRequest();
+			runRequest.setConnectorId(connectorId);
+			List<Integer> credentialIds = new ArrayList<>();
+			credentialIds.add(credentialId);
+			runRequest.setCredentialIds(credentialIds);
+			runRequest.setFromBeginning(false);
+
+			ResponseEntity<String> runResponse = runConnectorOnce(runRequest);
+			if (!runResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(runResponse.getStatusCode()).body("Failed to run connector");
+			}
+
+			// 6. Get Indexing Status		
+			logger.info("6. Get Indexing Status");
+			ResponseEntity<String> indexingResponse = getIndexingStatus();
+			if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
+			}
+			// Extract CC Pair ID from indexingResponse
+			// Parse the JSON array from the response body
+			JsonNode indexingArray = objectMapper.readTree(indexingResponse.getBody());
+
+			// Initialize variable to store the found cc_pair_id
+			int ccPairId = -1; // Default to -1 or another sentinel value to indicate not found
+
+			// Iterate through each item in the array
+			for (JsonNode item : indexingArray) {
+				// Check if the name matches the given name
+				if (item.path("name").asText().equals(uuid)) {
+					// If a match is found, extract the cc_pair_id
+					ccPairId = item.path("cc_pair_id").asInt();
+					// Log the found ccPairId
+					logger.info("6. Get Indexing Status. ccPairId {}", ccPairId);
+					// Break out of the loop if you only expect one match
+					break;
+				}
+			}
+
+			// Check if the ccPairId was found
+			if (ccPairId == -1) {
+				// Handle the case where the given name was not found in the array
+				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Given name '" + uuid + "' not found in the indexing response.");
+			}
+
+			// 7. Create Document Set
+			logger.info("7. Create Document Set");
+			DocumentSetRequest documentRequest = new DocumentSetRequest();
+			documentRequest.setName(uuid);
+			documentRequest.setDescription(uuid);
+			List<Integer> ccPairIds = new ArrayList<>();
+			ccPairIds.add(ccPairId);
+			documentRequest.setCcPairIds(ccPairIds);
+
+			ResponseEntity<String> documentResponse = createDocumentSet(documentRequest);
+			if (!documentResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(documentResponse.getStatusCode()).body("Failed to run document");
+			}
+			int documentSetId = Integer.parseInt(documentResponse.getBody());
+			logger.info("7. Create Document Set. documentSetId {}", documentSetId);
+
+			DocumentSet documentSet = new DocumentSet();
+			documentSet.setUuid(uuid);
+			documentSet.setCreatedAt(localDateTime);
+			documentSet.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+			documentSet.setDocumentSetId(documentSetId);
+			documentSet.setName(uuid);
+			documentSet.setDescription(uuid);
+			documentSet.setConnectorId(ccPairId);
+			documentSetRepository.save(documentSet);
+
+			// 8. Create Default Prompt
+			logger.info("8. Create Default Prompt");
+			DefaultPromptRequest promptRequest = new DefaultPromptRequest();
+			promptRequest.setName("default-prompt__" + uuid);
+			promptRequest.setDescription("Default prompt for persona " + uuid);
+			promptRequest.setShared(true);
+			promptRequest.setSystemPrompt(systemPrompt);
+			promptRequest.setTaskPrompt(taskPrompt);
+			promptRequest.setIncludeCitations(true);		
+
+			ResponseEntity<String> promptResponse = createDefaultPrompt(promptRequest);
+			if (!promptResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(promptResponse.getStatusCode()).body("Failed to run Create Default Prompt");
+			}
+			// Extract Prompt ID from promptResponse
+			JsonNode promptNode = objectMapper.readTree(promptResponse.getBody());
+			int promptId = promptNode.path("id").asInt();
+			logger.info("8. Create Default Prompt. promptId {}", promptId);
+
+			Prompt prompt = new Prompt();
+			prompt.setUuid(uuid);
+			prompt.setCreatedAt(localDateTime);
+			prompt.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+			prompt.setPromptId(promptId);
+			prompt.setName(promptRequest.getName());
+			prompt.setDescription(promptRequest.getDescription());
+			prompt.setSystemPrompt(promptRequest.getSystemPrompt());
+			prompt.setTaskPrompt(promptRequest.getTaskPrompt());
+			promptRepository.save(prompt);
+
+			// 9. Create Persona
+			logger.info("9. Create Persona");
+			PersonaRequest personaRequest = new PersonaRequest();
+			personaRequest.setName(uuid);
+			personaRequest.setDescription(uuid);
+			personaRequest.setShared(true);
+			personaRequest.setNumChunks(10);
+			personaRequest.setLlmRelevanceFilter(false);
+			personaRequest.setLlmFilterExtraction(false);
+			personaRequest.setRecencyBias("base_decay");		
+			List<Integer> promptIds = new ArrayList<>();
+			promptIds.add(promptId);
+			personaRequest.setPromptIds(promptIds);
+			List<Integer> documentSetIds = new ArrayList<>();
+			documentSetIds.add(documentSetId);
+			personaRequest.setDocumentSetIds(documentSetIds);
+
+			ResponseEntity<String> personaResponse = createPersona(personaRequest);
+			if (!personaResponse.getStatusCode().is2xxSuccessful()) {
+				return ResponseEntity.status(personaResponse.getStatusCode()).body("Failed to run Create Persona");
+			}
+			// Extract Prompt ID from promptResponse
+			JsonNode personaNode = objectMapper.readTree(personaResponse.getBody());
+			int personaId = personaNode.path("id").asInt();
+			logger.info("9. Create Persona. personaId {}", personaId);
+
+			Persona persona = new Persona();
+			persona.setUuid(uuid);
+			persona.setCreatedAt(localDateTime);
+			persona.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+			persona.setPersonaId(personaId);
+			persona.setName(personaRequest.getName());
+			persona.setDescription(personaRequest.getDescription());
+			persona.setPromptId(promptId);
+			persona.setDocumentSetId(documentSetId);
+			personaRepository.save(persona);
+
+			return ResponseEntity.ok("Process completed successfully");
+		}		
 	}
 
 }
