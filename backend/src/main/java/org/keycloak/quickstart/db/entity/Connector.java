@@ -27,5 +27,7 @@ public class Connector {
     private Integer connectorId;
 
     private String fileNames;
+
+    private Integer ccPairId;
 }
 

@@ -29,6 +29,4 @@ public class DocumentSet {
     private String name;
 
     private String description;
-
-    private Integer connectorId;
 }

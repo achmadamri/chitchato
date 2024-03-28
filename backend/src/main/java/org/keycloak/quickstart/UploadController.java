@@ -232,20 +232,8 @@ public class UploadController {
 		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
 		HttpEntity<DocumentSetRequest> entity = new HttpEntity<>(documentSetRequest, headers);
-		return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.PATCH, entity, String.class);
+		return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.POST, entity, String.class);
 	}
-
-	// @PatchMapping("/update-document-set")
-    // public ResponseEntity<String> updateDocumentSet(@RequestBody DocumentSetUpdateRequest documentSetUpdateRequest) {
-    //     HttpHeaders headers = new HttpHeaders();
-    //     headers.setContentType(MediaType.APPLICATION_JSON);
-    //     headers.setAccept(Collections.singletonList(MediaType.ALL));
-	// 	headers.set("Accept", "application/json");
-	// 	headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
-
-    //     HttpEntity<DocumentSetUpdateRequest> entity = new HttpEntity<>(documentSetUpdateRequest, headers);
-	// 	return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.PATCH, entity, String.class);
-    // }
 
 	// @PatchMapping("/update-document-set")
     public Mono<String> updateDocumentSet(@RequestBody DocumentSetUpdateRequest documentSetUpdateRequest) {
@@ -434,6 +422,9 @@ public class UploadController {
 				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Given name '" + uuid + "' not found in the indexing response.");
 			}
 
+			connector.setCcPairId(ccPairId);
+			connectorRepository.save(connector);
+
 			// 7. Update Document Set
 			logger.info("7. Update Document Set");
 			DocumentSet documentSetExample = new DocumentSet();
@@ -443,32 +434,39 @@ public class UploadController {
 			DocumentSetUpdateRequest documentSetUpdateRequest = new DocumentSetUpdateRequest();
 			documentSetUpdateRequest.setId(documentSetOptional.get().getDocumentSetId());
 			documentSetUpdateRequest.setDescription(documentSetOptional.get().getUuid());
+
 			List<Integer> ccPairIds = new ArrayList<>();
-			ccPairIds.add(ccPairId);
+			Connector connectorExample = new Connector();
+			connectorExample.setCreatedBy(username);
+			List<Connector> lstConnector = connectorRepository.findAll(Example.of(connectorExample));
+			for (Connector c : lstConnector) {
+				ccPairIds.add(c.getCcPairId());
+			}
+
 			documentSetUpdateRequest.setCcPairIds(ccPairIds);
 
-			updateDocumentSet(documentSetUpdateRequest)
+			ResponseEntity<?> responseEntity = updateDocumentSet(documentSetUpdateRequest)
 			.flatMap(response -> {
-				try {
-					// Assuming the response is the document set ID as a string
-					// int documentSetId = Integer.parseInt(response);
-					// logger.info("7. Update Document Set. documentSetId {}", documentSetId);
-					// return Mono.just(ResponseEntity.ok(documentSetId));
-					return Mono.just(ResponseEntity.ok(HttpStatus.OK));
-				} catch (NumberFormatException e) {
-					logger.error("Failed to parse documentSetId from response", e);
-					return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to run document"));
-				}
-			})
-			.subscribe(result -> {
-				// This is where you would handle the result
-				// Note: This is a simplified example. In a real application, you should carefully consider where and how to subscribe to avoid blocking operations and to handle context properly.
-				if (!result.getStatusCode().is2xxSuccessful()) {
-					logger.error("Failed to update document set");
-				} else {
-					logger.info("Successfully updated document set with ID: {}", result.getBody());
-				}
-			});
+                try {
+                    // Assuming the response is the document set ID as a string
+                    // int documentSetId = Integer.parseInt(response);
+                    // logger.info("7. Update Document Set. documentSetId {}", documentSetId);
+                    // Since we're making it synchronous, return the OK status directly
+                    return Mono.just(ResponseEntity.ok(HttpStatus.OK));
+                } catch (NumberFormatException e) {
+                    logger.error("Failed to parse documentSetId from response", e);
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to run document"));
+                }
+            })
+            .block(); // This blocks until the operation is completed
+
+			// Handle the result synchronously
+			if (responseEntity != null && !responseEntity.getStatusCode().is2xxSuccessful()) {
+				logger.error("Failed to update document set");
+				return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to update document set");
+			} else if (responseEntity != null) {
+				logger.info("Successfully updated document set with ID: {}", responseEntity.getBody());
+			}
 
 			return ResponseEntity.ok("Process completed successfully");
 		} else {
@@ -595,6 +593,9 @@ public class UploadController {
 				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Given name '" + uuid + "' not found in the indexing response.");
 			}
 
+			connector.setCcPairId(ccPairId);
+			connectorRepository.save(connector);
+
 			// 7. Create Document Set
 			logger.info("7. Create Document Set");
 			DocumentSetRequest documentRequest = new DocumentSetRequest();
@@ -618,7 +619,6 @@ public class UploadController {
 			documentSet.setDocumentSetId(documentSetId);
 			documentSet.setName(uuid);
 			documentSet.setDescription(uuid);
-			documentSet.setConnectorId(ccPairId);
 			documentSetRepository.save(documentSet);
 
 			// 8. Create Default Prompt
