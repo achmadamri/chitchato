@@ -9,10 +9,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "user")
+@Table(name = "user_number")
 @Setter
 @Getter
-public class User {
+public class UserNumber {
     @Id
     private String uuid;
 
@@ -24,7 +24,5 @@ public class User {
 
     private String updatedBy;
     
-    private String username;
-
-    private String usernameDanswer;
+    private String no;
 }

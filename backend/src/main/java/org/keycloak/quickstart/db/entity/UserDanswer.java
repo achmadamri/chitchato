@@ -14,6 +14,16 @@ import lombok.Setter;
 @Getter
 public class UserDanswer {
     @Id
+    private String uuid;
+
+    private LocalDateTime createdAt;
+
+    private String createdBy;
+
+    private LocalDateTime updateAt;
+
+    private String updatedBy;
+    
     private String username;
 
     private String password;

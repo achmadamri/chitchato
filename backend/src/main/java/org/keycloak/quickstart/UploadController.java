@@ -70,6 +70,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -77,13 +78,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.annotation.PostConstruct;
-
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -94,7 +88,7 @@ public class UploadController {
 
 	private String baseUrl = "https://chitchato.danswer.ai/";
 
-	private String fastapiusersauth = "eipqT7YKEGIOUp7QlGTQ9rcLIyoU6fO3GjqxdD21mTk";	
+	private String fastapiusersauth = "AidQORsi5r20CyydjKwp-fiS-AxKqPCQEla815IedwI";
 
 	private String systemPrompt;
 	
@@ -299,6 +293,12 @@ public class UploadController {
 		personaExample.setCreatedBy(username);
 		Optional<Persona> personaOptional = personaRepository.findOne(Example.of(personaExample));
 		if (personaOptional.isPresent()) {
+			DocumentSet documentSetCountExample = new DocumentSet();
+			documentSetCountExample.setCreatedBy(username);
+			if (documentSetRepository.count(Example.of(documentSetCountExample)) >= 1) {
+				return ResponseEntity.status(500).body("Max document limit");
+			}
+
 			// 1. Upload the file
 			logger.info("1. Upload the file");
 			ResponseEntity<String> uploadResponse = uploadFile(file);
@@ -468,7 +468,7 @@ public class UploadController {
 				logger.info("Successfully updated document set with ID: {}", responseEntity.getBody());
 			}
 
-			return ResponseEntity.ok("Process completed successfully");
+			return ResponseEntity.status(HttpStatus.OK).body("Process uploadCombined completed successfully");
 		} else {
 			// 1. Upload the file
 			logger.info("1. Upload the file");
@@ -688,7 +688,7 @@ public class UploadController {
 			persona.setDocumentSetId(documentSetId);
 			personaRepository.save(persona);
 
-			return ResponseEntity.ok("Process completed successfully");
+			return ResponseEntity.status(HttpStatus.OK).body("Process uploadCombined completed successfully");
 		}		
 	}
 
