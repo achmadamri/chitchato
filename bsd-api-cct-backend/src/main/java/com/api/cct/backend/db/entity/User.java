@@ -25,6 +25,8 @@ public class User {
     private String usernameDanswer;
 
     private String fastapiusersauth;
+    
+    private String device;
 
     public String getUuid() {
         return uuid;
@@ -88,5 +90,13 @@ public class User {
 
     public void setFastapiusersauth(String fastapiusersauth) {
         this.fastapiusersauth = fastapiusersauth;
+    }
+
+    public String getDevice() {
+        return device;
+    }
+
+    public void setDevice(String device) {
+        this.device = device;
     }
 }

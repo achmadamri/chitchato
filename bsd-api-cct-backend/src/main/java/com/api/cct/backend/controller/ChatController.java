@@ -42,6 +42,7 @@ import org.springframework.web.client.RestTemplate;
 import com.api.cct.backend.controller.SendMessageRequest.RetrievalOptions;
 import com.api.cct.backend.controller.SendMessageRequest.RetrievalOptions.Filters;
 import com.api.cct.backend.db.entity.Persona;
+import com.api.cct.backend.db.entity.User;
 import com.api.cct.backend.db.entity.UserChat;
 import com.api.cct.backend.db.entity.UserNumber;
 import com.api.cct.backend.db.repository.PersonaRepository;
@@ -105,7 +106,10 @@ public class ChatController {
 
 		// Initialize username
 		// String username = jwt.getClaimAsString("preferred_username");
-		String username = sendRequest.getUsername();
+		User userExample = new User();
+		userExample.setDevice(sendRequest.getDevice());
+		Optional<User> userOptional = userRepository.findOne(Example.of(userExample));
+		String username = userOptional.get().getUsername();
 		logger.info("username: {}", username);
 
 		// Initialize fastapiusersauth

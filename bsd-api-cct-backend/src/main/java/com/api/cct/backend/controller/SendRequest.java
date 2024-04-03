@@ -5,7 +5,7 @@ public class SendRequest {
 
     private String message;
 
-    private String username;
+    private String device;
 
     public String getNo() {
         return no;
@@ -23,11 +23,11 @@ public class SendRequest {
         this.message = message;
     }
 
-    public String getUsername() {
-        return username;
+    public String getDevice() {
+        return device;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setDevice(String device) {
+        this.device = device;
     }    
 }
