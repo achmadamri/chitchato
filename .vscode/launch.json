@@ -5,7 +5,7 @@
             "name": "Spring Boot-Application<backend>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "mainClass": "com.api.dms.auth.Application",
+            "mainClass": "com.api.cct.backend.Application",
             "projectName": "backend",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
@@ -27,6 +27,16 @@
             "cwd": "${workspaceFolder}",
             "mainClass": "org.keycloak.quickstart.OAuth2ResourceServerApplication",
             "projectName": "backend",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-Application<bsd-api-cct-backend>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.api.cct.backend.Application",
+            "projectName": "bsd-api-cct-backend",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
         }
