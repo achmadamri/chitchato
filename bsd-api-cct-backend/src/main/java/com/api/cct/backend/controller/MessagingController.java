@@ -3,9 +3,12 @@ package com.api.cct.backend.controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -13,6 +16,9 @@ import java.util.Map;
 
 @RestController
 public class MessagingController {
+
+    @Autowired
+	private RestTemplate restTemplate;
 
     @PostMapping("/send")
     public void sendMessage(@RequestBody Map<String, Object> data) {
@@ -34,22 +40,21 @@ public class MessagingController {
     }
 
     private void sendFonnte(String target, Map<String, Object> data) {
-        RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.add("Authorization", "TOKEN");
+        headers.add("Authorization", "ZLzXYm4cUtyk4Acxs16Y");
 
-        Map<String, String> map = new HashMap<>();
-        map.put("target", target);
-        map.put("message", (String) data.get("message"));
-        map.put("url", (String) data.get("url"));
-        map.put("filename", (String) data.get("filename"));
-        // and so on for other fields
+        MultiValueMap<String, String> map= new LinkedMultiValueMap<>();
+        map.add("target", target);
+        map.add("message", (String) data.get("message"));
+        map.add("url", (String) data.get("url"));
+        map.add("filename", (String) data.get("filename"));
+        
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
 
-        HttpEntity<Map<String, String>> entity = new HttpEntity<>(map, headers);
+        String response = restTemplate.postForObject("https://api.fonnte.com/send", request, String.class);
 
-        String response = restTemplate.postForObject("https://api.fonnte.com/send", entity, String.class);
-        System.out.println("Response from Fonnte: " + response);
+        System.out.println(response);
     }
 }
 
