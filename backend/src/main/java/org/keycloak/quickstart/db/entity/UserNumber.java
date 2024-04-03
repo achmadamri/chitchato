@@ -24,5 +24,7 @@ public class UserNumber {
 
     private String updatedBy;
     
-    private String no;
+    private String no;   
+    
+    private Integer chatSessionId;
 }

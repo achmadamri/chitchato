@@ -39,6 +39,7 @@ import org.keycloak.quickstart.db.repository.ConnectorRepository;
 import org.keycloak.quickstart.db.repository.DocumentSetRepository;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
 import org.keycloak.quickstart.db.repository.PromptRepository;
+import org.keycloak.quickstart.db.repository.UserRepository;
 import org.keycloak.quickstart.request.CreateConnectorRequest;
 import org.keycloak.quickstart.request.CreateConnectorRequest.ConnectorSpecificConfig;
 import org.keycloak.quickstart.request.CreateCredentialRequest;
@@ -63,6 +64,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -88,8 +90,6 @@ public class UploadController {
 
 	private String baseUrl = "https://chitchato.danswer.ai/";
 
-	private String fastapiusersauth = "AidQORsi5r20CyydjKwp-fiS-AxKqPCQEla815IedwI";
-
 	private String systemPrompt;
 	
 	private String taskPrompt;
@@ -112,6 +112,9 @@ public class UploadController {
 	@Autowired
 	private PersonaRepository personaRepository;
 
+	@Autowired
+	private UserRepository userRepository;
+
 	private final WebClient webClient;
 
     public UploadController(WebClient.Builder webClientBuilder) {
@@ -127,8 +130,8 @@ public class UploadController {
         logger.info("taskPrompt: {}", taskPrompt);
     }
 
-	// @GetMapping("/indexing-status")
-	public ResponseEntity<String> getIndexingStatus() {
+	@GetMapping("/indexing-status")
+	public ResponseEntity<String> getIndexingStatus(String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Accept", "application/json");
 		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
@@ -138,7 +141,7 @@ public class UploadController {
 	}
 
 	// @PostMapping("/upload-file")
-	public ResponseEntity<String> uploadFile(@RequestParam("files") MultipartFile file) {
+	public ResponseEntity<String> uploadFile(@RequestParam("files") MultipartFile file, String fastapiusersauth) {
 		// Check if the file is empty or not
 		if (file.isEmpty()) {
 			return new ResponseEntity<>("Empty file cannot be uploaded", HttpStatus.BAD_REQUEST);
@@ -172,7 +175,7 @@ public class UploadController {
 	}
 
 	// @PostMapping("/create-connector")
-	public ResponseEntity<String> createConnector(@RequestBody CreateConnectorRequest createConnectorRequest) {
+	public ResponseEntity<String> createConnector(@RequestBody CreateConnectorRequest createConnectorRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
@@ -183,7 +186,7 @@ public class UploadController {
 	}
 
 	// @PostMapping("/create-credential")
-	public ResponseEntity<String> createCredential(@RequestBody CreateCredentialRequest createCredentialRequest) {
+	public ResponseEntity<String> createCredential(@RequestBody CreateCredentialRequest createCredentialRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
@@ -194,7 +197,7 @@ public class UploadController {
 	}
 
 	// @PutMapping("/update-connector-credential")
-	public ResponseEntity<String> updateConnectorCredential(@RequestBody UpdateConnectorCredentialRequest updateConnectorCredentialRequest) {
+	public ResponseEntity<String> updateConnectorCredential(@RequestBody UpdateConnectorCredentialRequest updateConnectorCredentialRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
@@ -207,7 +210,7 @@ public class UploadController {
 	}
 
 	// @PostMapping("/run-connector-once")
-	public ResponseEntity<String> runConnectorOnce(@RequestBody RunConnectorOnceRequest runOnceRequest) {
+	public ResponseEntity<String> runConnectorOnce(@RequestBody RunConnectorOnceRequest runOnceRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
@@ -218,7 +221,7 @@ public class UploadController {
 	}
 
 	// @PostMapping("/create-document-set")
-	public ResponseEntity<String> createDocumentSet(@RequestBody DocumentSetRequest documentSetRequest) {
+	public ResponseEntity<String> createDocumentSet(@RequestBody DocumentSetRequest documentSetRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.setAccept(Collections.singletonList(MediaType.ALL));
@@ -230,7 +233,7 @@ public class UploadController {
 	}
 
 	// @PatchMapping("/update-document-set")
-    public Mono<String> updateDocumentSet(@RequestBody DocumentSetUpdateRequest documentSetUpdateRequest) {
+    public Mono<String> updateDocumentSet(@RequestBody DocumentSetUpdateRequest documentSetUpdateRequest, String fastapiusersauth) {
         return this.webClient.patch()
                 .uri("/api/manage/admin/document-set")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -242,7 +245,7 @@ public class UploadController {
     }
 
 	// @PostMapping("/api/create-default-prompt")
-	public ResponseEntity<String> createDefaultPrompt(@RequestBody DefaultPromptRequest defaultPromptRequest) {
+	public ResponseEntity<String> createDefaultPrompt(@RequestBody DefaultPromptRequest defaultPromptRequest, String fastapiusersauth) {
 		String url = "https://chitchato.danswer.ai/api/prompt";
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -257,7 +260,7 @@ public class UploadController {
 	}
 
 	// @PostMapping("/api/create-persona")
-	public ResponseEntity<String> createPersona(@RequestBody PersonaRequest personaRequest) {
+	public ResponseEntity<String> createPersona(@RequestBody PersonaRequest personaRequest, String fastapiusersauth) {
 		String url = "https://chitchato.danswer.ai/api/admin/persona";
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -284,6 +287,9 @@ public class UploadController {
 		String username = jwt.getClaimAsString("preferred_username");
 		logger.info("username: {}", username);
 
+		// Initialize fastapiusersauth
+		String fastapiusersauth = userRepository.findByUsername(username).get().getFastapiusersauth();
+
 		// Initialize uuid
 		String uuid = UUID.randomUUID().toString();
 		logger.info("uuid: {}", uuid);
@@ -301,7 +307,7 @@ public class UploadController {
 
 			// 1. Upload the file
 			logger.info("1. Upload the file");
-			ResponseEntity<String> uploadResponse = uploadFile(file);
+			ResponseEntity<String> uploadResponse = uploadFile(file, fastapiusersauth);
 			if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(uploadResponse.getStatusCode()).body("Failed to upload file");
 			}
@@ -324,7 +330,7 @@ public class UploadController {
 			connectorRequest.setDisabled(false);
 			connectorRequest.setRefreshFreq(null);		
 
-			ResponseEntity<String> connectorResponse = createConnector(connectorRequest);
+			ResponseEntity<String> connectorResponse = createConnector(connectorRequest, fastapiusersauth);
 			if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to create connector");
 			}
@@ -354,7 +360,7 @@ public class UploadController {
 			credentialRequest.setCredentialJson(new HashMap<>());
 			credentialRequest.setAdminPublic(true);
 
-			ResponseEntity<String> credentialResponse = createCredential(credentialRequest);
+			ResponseEntity<String> credentialResponse = createCredential(credentialRequest, fastapiusersauth);
 			if (!credentialResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(credentialResponse.getStatusCode()).body("Failed to create credential");
 			}
@@ -371,7 +377,7 @@ public class UploadController {
 			updateRequest.setName(uuid);
 			updateRequest.setPublic(true);
 
-			ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest);
+			ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest, fastapiusersauth);
 			if (!updateResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(updateResponse.getStatusCode()).body("Failed to update connector credential");
 			}
@@ -385,14 +391,14 @@ public class UploadController {
 			runRequest.setCredentialIds(credentialIds);
 			runRequest.setFromBeginning(false);
 
-			ResponseEntity<String> runResponse = runConnectorOnce(runRequest);
+			ResponseEntity<String> runResponse = runConnectorOnce(runRequest, fastapiusersauth);
 			if (!runResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(runResponse.getStatusCode()).body("Failed to run connector");
 			}
 
 			// 6. Get Indexing Status		
 			logger.info("6. Get Indexing Status");
-			ResponseEntity<String> indexingResponse = getIndexingStatus();
+			ResponseEntity<String> indexingResponse = getIndexingStatus(fastapiusersauth);
 			if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
 			}
@@ -445,7 +451,7 @@ public class UploadController {
 
 			documentSetUpdateRequest.setCcPairIds(ccPairIds);
 
-			ResponseEntity<?> responseEntity = updateDocumentSet(documentSetUpdateRequest)
+			ResponseEntity<?> responseEntity = updateDocumentSet(documentSetUpdateRequest, fastapiusersauth)
 			.flatMap(response -> {
                 try {
                     // Assuming the response is the document set ID as a string
@@ -472,7 +478,7 @@ public class UploadController {
 		} else {
 			// 1. Upload the file
 			logger.info("1. Upload the file");
-			ResponseEntity<String> uploadResponse = uploadFile(file);
+			ResponseEntity<String> uploadResponse = uploadFile(file, fastapiusersauth);
 			if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(uploadResponse.getStatusCode()).body("Failed to upload file");
 			}
@@ -495,7 +501,7 @@ public class UploadController {
 			connectorRequest.setDisabled(false);
 			connectorRequest.setRefreshFreq(null);		
 
-			ResponseEntity<String> connectorResponse = createConnector(connectorRequest);
+			ResponseEntity<String> connectorResponse = createConnector(connectorRequest, fastapiusersauth);
 			if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to create connector");
 			}
@@ -525,7 +531,7 @@ public class UploadController {
 			credentialRequest.setCredentialJson(new HashMap<>());
 			credentialRequest.setAdminPublic(true);
 
-			ResponseEntity<String> credentialResponse = createCredential(credentialRequest);
+			ResponseEntity<String> credentialResponse = createCredential(credentialRequest, fastapiusersauth);
 			if (!credentialResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(credentialResponse.getStatusCode()).body("Failed to create credential");
 			}
@@ -542,7 +548,7 @@ public class UploadController {
 			updateRequest.setName(uuid);
 			updateRequest.setPublic(true);
 
-			ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest);
+			ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest, fastapiusersauth);
 			if (!updateResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(updateResponse.getStatusCode()).body("Failed to update connector credential");
 			}
@@ -556,14 +562,14 @@ public class UploadController {
 			runRequest.setCredentialIds(credentialIds);
 			runRequest.setFromBeginning(false);
 
-			ResponseEntity<String> runResponse = runConnectorOnce(runRequest);
+			ResponseEntity<String> runResponse = runConnectorOnce(runRequest, fastapiusersauth);
 			if (!runResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(runResponse.getStatusCode()).body("Failed to run connector");
 			}
 
 			// 6. Get Indexing Status		
 			logger.info("6. Get Indexing Status");
-			ResponseEntity<String> indexingResponse = getIndexingStatus();
+			ResponseEntity<String> indexingResponse = getIndexingStatus(fastapiusersauth);
 			if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
 			}
@@ -605,7 +611,7 @@ public class UploadController {
 			ccPairIds.add(ccPairId);
 			documentRequest.setCcPairIds(ccPairIds);
 
-			ResponseEntity<String> documentResponse = createDocumentSet(documentRequest);
+			ResponseEntity<String> documentResponse = createDocumentSet(documentRequest, fastapiusersauth);
 			if (!documentResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(documentResponse.getStatusCode()).body("Failed to run document");
 			}
@@ -631,7 +637,7 @@ public class UploadController {
 			promptRequest.setTaskPrompt(taskPrompt);
 			promptRequest.setIncludeCitations(true);		
 
-			ResponseEntity<String> promptResponse = createDefaultPrompt(promptRequest);
+			ResponseEntity<String> promptResponse = createDefaultPrompt(promptRequest, fastapiusersauth);
 			if (!promptResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(promptResponse.getStatusCode()).body("Failed to run Create Default Prompt");
 			}
@@ -668,7 +674,7 @@ public class UploadController {
 			documentSetIds.add(documentSetId);
 			personaRequest.setDocumentSetIds(documentSetIds);
 
-			ResponseEntity<String> personaResponse = createPersona(personaRequest);
+			ResponseEntity<String> personaResponse = createPersona(personaRequest, fastapiusersauth);
 			if (!personaResponse.getStatusCode().is2xxSuccessful()) {
 				return ResponseEntity.status(personaResponse.getStatusCode()).body("Failed to run Create Persona");
 			}
