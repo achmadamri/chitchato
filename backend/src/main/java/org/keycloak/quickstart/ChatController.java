@@ -181,7 +181,6 @@ public class ChatController {
 				// Extract credential ID from createChatSessionResponse
 				String jsonArray[] = sendMessageResponse.getBody().split("\n");
 				JsonNode sendMessageNode = objectMapper.readTree(jsonArray[jsonArray.length - 1]);
-				logger.info("2. Send Message. sendMessageResponse.getBody() {}", sendMessageResponse.getBody());
 				int messageId = sendMessageNode.path("message_id").asInt();
 				int parentMessageId = sendMessageNode.path("parent_message").asInt();
 				String message = sendMessageNode.path("message").asText();
@@ -199,9 +198,67 @@ public class ChatController {
 				userChat.setParentMessageId(parentMessageId);
 				userChatRepository.save(userChat);
 
-				return ResponseEntity.status(HttpStatus.OK).body("Process send completed successfully");
+				// Return message
+				return ResponseEntity.status(HttpStatus.OK).body(message);
 			} else {
-				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("No number found for " + sendRequest.getNo());
+				// 1. Get Chat Session ID
+				logger.info("1. Get Chat Session ID");
+				int chatSessionId = userNumberOptional.get().getChatSessionId();
+				logger.info("1. Get Chat Session ID. chatSessionId {}", chatSessionId);
+
+				// Create a Date instance
+				Date now = new Date();
+				// Convert Date to LocalDateTime
+				ZonedDateTime zdt = now.toInstant().atZone(ZoneId.systemDefault());
+				LocalDateTime localDateTime = zdt.toLocalDateTime();
+
+				// 2. Send Message
+				logger.info("2. Send Message");
+				UserChat userChatLast = userChatRepository.findOneByCreatedByAndUserNumberOrderByMessageIdDesc(username, sendRequest.getNo());
+
+				SendMessageRequest sendMessageRequest = new SendMessageRequest();
+				sendMessageRequest.setChatSessionId(chatSessionId);
+				sendMessageRequest.setMessage(sendRequest.getMessage());
+				sendMessageRequest.setParentMessageId(userChatLast.getMessageId());
+				sendMessageRequest.setPromptId(personaOptional.get().getPromptId());
+				RetrievalOptions retrievalOptions = new RetrievalOptions();
+				Filters filters = new Filters();
+				filters.setDocumentSet(null);
+				filters.setSourceType(null);
+				filters.setTags(new String[0]);
+				filters.setTimeCutoff(null);
+				retrievalOptions.setFilters(filters);
+				retrievalOptions.setRealTime(false);
+				retrievalOptions.setRunSearch("auto");
+				sendMessageRequest.setRetrievalOptions(retrievalOptions);
+				sendMessageRequest.setSearchDocIds(null);
+				
+				ResponseEntity<String> sendMessageResponse = sendMessage(sendMessageRequest, fastapiusersauth);
+				if (!sendMessageResponse.getStatusCode().is2xxSuccessful()) {
+					return ResponseEntity.status(sendMessageResponse.getStatusCode()).body("Failed to send message");
+				}
+				// Extract credential ID from createChatSessionResponse
+				String jsonArray[] = sendMessageResponse.getBody().split("\n");
+				JsonNode sendMessageNode = objectMapper.readTree(jsonArray[jsonArray.length - 1]);
+				int messageId = sendMessageNode.path("message_id").asInt();
+				int parentMessageId = sendMessageNode.path("parent_message").asInt();
+				String message = sendMessageNode.path("message").asText();
+				logger.info("2. Send Message. messageId {} message {}", messageId, message);
+
+				// Save chat
+				UserChat userChat = new UserChat();
+				userChat.setUuid(UUID.randomUUID().toString());
+				userChat.setCreatedBy(username);
+				userChat.setCreatedAt(localDateTime);
+				userChat.setUserNumber(sendRequest.getNo());
+				userChat.setMessageIn(sendRequest.getMessage());
+				userChat.setMessageOut(message);
+				userChat.setMessageId(messageId);
+				userChat.setParentMessageId(parentMessageId);
+				userChatRepository.save(userChat);
+
+				// Return message
+				return ResponseEntity.status(HttpStatus.OK).body(message);
 			}
 		} else {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("No persona found for " + username);

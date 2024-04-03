@@ -16,6 +16,9 @@ public class PersonaRequest {
 
     private Boolean shared;
 
+    @JsonProperty("include_citations")
+    private Boolean includeCitations;
+
     @JsonProperty("num_chunks")
     private Integer numChunks;
 

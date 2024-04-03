@@ -662,6 +662,7 @@ public class UploadController {
 			PersonaRequest personaRequest = new PersonaRequest();
 			personaRequest.setName(uuid);
 			personaRequest.setDescription(uuid);
+			personaRequest.setIncludeCitations(false);
 			personaRequest.setShared(true);
 			personaRequest.setNumChunks(10);
 			personaRequest.setLlmRelevanceFilter(false);

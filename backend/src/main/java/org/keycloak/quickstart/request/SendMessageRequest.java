@@ -18,7 +18,7 @@ public class SendMessageRequest {
     private String message;
 
     @JsonProperty("parent_message_id")
-    private String parentMessageId;
+    private Integer parentMessageId;
 
     @JsonProperty("prompt_id")
     private Integer promptId;
