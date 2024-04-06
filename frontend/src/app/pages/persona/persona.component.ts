@@ -21,6 +21,8 @@ export class PersonaComponent implements OnInit {
   ngOnInit() {
     this.personaService.getPersonaList().subscribe(data => {
       this.lstPersona = data;
+    }, error => {
+      window.location.href = '/';
     });
   }
 
@@ -29,8 +31,9 @@ export class PersonaComponent implements OnInit {
 
     this.personaService.getPersona(uuid).subscribe(data => {
       this.getPersonaResponse = data;
-
       this.clicked = false;
+    }, error => {
+      window.location.href = '/';
     });
   }
 
@@ -40,12 +43,12 @@ export class PersonaComponent implements OnInit {
 
   update(uuid: string) {
     this.clicked = true;
-
-    // disable button while loading and re-enable it after loading
+    
     this.personaService.getPersona('b7c00e22-30f2-4409-88de-ac779112f726').subscribe(data => {
       this.getPersonaResponse = data;
-
       this.clicked = false;
+    }, error => {
+      window.location.href = '/';
     });
   }
 

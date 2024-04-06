@@ -17,8 +17,10 @@ package org.keycloak.quickstart;
 
 import java.util.List;
 
+import org.keycloak.quickstart.db.entity.Connector;
 import org.keycloak.quickstart.db.entity.Persona;
 import org.keycloak.quickstart.db.entity.Prompt;
+import org.keycloak.quickstart.db.repository.ConnectorRepository;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
 import org.keycloak.quickstart.db.repository.PromptRepository;
 import org.keycloak.quickstart.response.GetPersonaResponse;
@@ -45,6 +47,9 @@ public class WebController {
 
 	@Autowired
 	private PromptRepository promptRepository;
+
+	@Autowired
+	private ConnectorRepository connectorRepository;
 
 	@GetMapping("/personalist")
     public ResponseEntity<List<Persona>> getPersonaList(@AuthenticationPrincipal Jwt jwt) {
@@ -73,8 +78,14 @@ public class WebController {
         promptExample.setPromptId(persona.getPromptId());
         Prompt prompt = promptRepository.findOne(Example.of(promptExample)).orElse(null);
 
+        // Load Connector from database
+        Connector connectorExample = new Connector();
+        connectorExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+        List<Connector> lstConnector = connectorRepository.findAll(Example.of(connectorExample));
+
         response.setPersona(persona);
         response.setPrompt(prompt);
+        response.setLstConnector(lstConnector);        
 
         // Return the list of personas as a JSON string
         return ResponseEntity.ok(response);
