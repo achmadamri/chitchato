@@ -130,7 +130,7 @@ public class UploadController {
         logger.info("taskPrompt: {}", taskPrompt);
     }
 
-	@GetMapping("/indexing-status")
+	// @GetMapping("/indexing-status")
 	public ResponseEntity<String> getIndexingStatus(String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Accept", "application/json");
