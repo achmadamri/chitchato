@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { GetPersonaListResponse } from 'src/app/services/getpersonalistresponse';
 import { GetPersonaResponse } from 'src/app/services/getpersonaresponse';
 import { Persona } from 'src/app/services/persona';
 import { PersonaService } from 'src/app/services/personaservice';
@@ -11,7 +12,7 @@ import { PersonaService } from 'src/app/services/personaservice';
 export class PersonaComponent implements OnInit {
 
   clicked = false;
-  public lstPersona: Persona[];
+  public getPersonaListResponse: GetPersonaListResponse;
   public getPersonaResponse: GetPersonaResponse;
 
   constructor(
@@ -19,8 +20,12 @@ export class PersonaComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    this.getPersonaList();
+  }
+
+  getPersonaList() {
     this.personaService.getPersonaList().subscribe(data => {
-      this.lstPersona = data;
+      this.getPersonaListResponse = data;
     }, error => {
       window.location.href = '/';
     });
@@ -38,7 +43,9 @@ export class PersonaComponent implements OnInit {
   }
 
   back(uuid: string) {
+    this.getPersonaListResponse = null;
     this.getPersonaResponse = null;
+    this.getPersonaList();
   }
 
   update(uuid: string) {

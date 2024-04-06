@@ -23,6 +23,7 @@ import org.keycloak.quickstart.db.entity.Prompt;
 import org.keycloak.quickstart.db.repository.ConnectorRepository;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
 import org.keycloak.quickstart.db.repository.PromptRepository;
+import org.keycloak.quickstart.response.GetPersonaListResponse;
 import org.keycloak.quickstart.response.GetPersonaResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,14 +53,18 @@ public class WebController {
 	private ConnectorRepository connectorRepository;
 
 	@GetMapping("/personalist")
-    public ResponseEntity<List<Persona>> getPersonaList(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<GetPersonaListResponse> getPersonaList(@AuthenticationPrincipal Jwt jwt) {
+        GetPersonaListResponse response = new GetPersonaListResponse();
+
         // Load Persona from database
         Persona personaExample = new Persona();
         personaExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
         List<Persona> personas = personaRepository.findAll(Example.of(personaExample));
 
+        response.setLstPersona(personas);
+
         // Return the list of personas as a JSON string
-        return ResponseEntity.ok(personas);
+        return ResponseEntity.ok(response);
     }
 
 	@GetMapping("/persona")

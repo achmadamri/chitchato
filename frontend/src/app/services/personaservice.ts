@@ -4,6 +4,7 @@ import { KeycloakService } from "keycloak-angular";
 import { Observable } from "rxjs";
 import { Persona } from "./persona";
 import { GetPersonaResponse } from "./getpersonaresponse";
+import { GetPersonaListResponse } from "./getpersonalistresponse";
 
 
 @Injectable({
@@ -14,14 +15,14 @@ export class PersonaService {
 
   constructor(private keycloakService: KeycloakService, private httpClient: HttpClient) { }
 
-  getPersonaList(): Observable<Persona[]> {
+  getPersonaList(): Observable<GetPersonaListResponse> {
     const headers = new HttpHeaders()
       .set('Content-Type', 'application/json');
 
     const params = new HttpParams()
       ;
 
-    return this.httpClient.get<Persona[]>(`${this.apiUrl}/personalist`, { headers, params });
+    return this.httpClient.get<GetPersonaListResponse>(`${this.apiUrl}/personalist`, { headers, params });
   }
 
   getPersona(uuid: string): Observable<GetPersonaResponse> {
