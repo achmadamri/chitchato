@@ -23,7 +23,7 @@
               <img alt="Image placeholder" src="assets/img/theme/istockphoto.jpg">
             </span>
             <div class="media-body ml-2 d-none d-lg-block">
-              <span class="mb-0 text-sm  font-weight-bold">{{userProfile.firstName}} {{userProfile.lastName}}</span>
+              <span class="mb-0 text-sm  font-weight-bold" *ngIf="this.userProfile != null">{{userProfile.firstName}} {{userProfile.lastName}}</span>
             </div>
           </div>
         </a>

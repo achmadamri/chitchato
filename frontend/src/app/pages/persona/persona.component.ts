@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Persona } from 'src/app/services/persona';
 import { PersonaService } from 'src/app/services/personaservice';
 
 @Component({
@@ -8,13 +9,20 @@ import { PersonaService } from 'src/app/services/personaservice';
 })
 export class PersonaComponent implements OnInit {
 
+  public lstPersona: Persona[];
+
   constructor(
     private personaService: PersonaService
   ) { }
 
   ngOnInit() {
     this.personaService.getProductList().subscribe(data => {
-      console.log(data);
+      this.lstPersona = data;
+      
+      // iterate over the list of personas
+      this.lstPersona.forEach(persona => {
+        console.log(persona);
+      });
     });
   }
 

@@ -13,7 +13,7 @@ export class PersonaService {
 
   constructor(private keycloakService: KeycloakService, private httpClient: HttpClient) { }  
 
-  getProductList(): Observable<Persona> {
+  getProductList(): Observable<Persona[]> {
     const headers = new HttpHeaders()
       .set('Content-Type', 'application/json');
 
@@ -32,6 +32,6 @@ export class PersonaService {
       // .set('type', type)
       ;
 
-    return this.httpClient.get<Persona>(`${this.apiUrl}/list`, { headers, params });
+    return this.httpClient.get<Persona[]>(`${this.apiUrl}/list`, { headers, params });
   }
 }
