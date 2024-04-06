@@ -18,7 +18,10 @@ package org.keycloak.quickstart;
 import java.util.List;
 
 import org.keycloak.quickstart.db.entity.Persona;
+import org.keycloak.quickstart.db.entity.Prompt;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
+import org.keycloak.quickstart.db.repository.PromptRepository;
+import org.keycloak.quickstart.response.GetPersonaResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +31,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -39,8 +43,11 @@ public class WebController {
 	@Autowired
 	private PersonaRepository personaRepository;
 
-	@GetMapping("/list")
-    public ResponseEntity<List<Persona>> getIndexingStatus(@AuthenticationPrincipal Jwt jwt) {
+	@Autowired
+	private PromptRepository promptRepository;
+
+	@GetMapping("/personalist")
+    public ResponseEntity<List<Persona>> getPersonaList(@AuthenticationPrincipal Jwt jwt) {
         // Load Persona from database
         Persona personaExample = new Persona();
         personaExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
@@ -48,5 +55,28 @@ public class WebController {
 
         // Return the list of personas as a JSON string
         return ResponseEntity.ok(personas);
+    }
+
+	@GetMapping("/persona")
+    public ResponseEntity<GetPersonaResponse> getPersona(@AuthenticationPrincipal Jwt jwt, @RequestParam String uuid) {
+        GetPersonaResponse response = new GetPersonaResponse();
+
+        // Load Persona from database
+        Persona personaExample = new Persona();
+        personaExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+        personaExample.setUuid(uuid);
+        Persona persona = personaRepository.findOne(Example.of(personaExample)).orElse(null);
+
+        // Load Prompt from database
+        Prompt promptExample = new Prompt();
+        promptExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+        promptExample.setPromptId(persona.getPromptId());
+        Prompt prompt = promptRepository.findOne(Example.of(promptExample)).orElse(null);
+
+        response.setPersona(persona);
+        response.setPrompt(prompt);
+
+        // Return the list of personas as a JSON string
+        return ResponseEntity.ok(response);
     }
 }

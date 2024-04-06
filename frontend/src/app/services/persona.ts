@@ -1,3 +1,5 @@
+import { Prompt } from "./prompt";
+
 export class Persona {
 	uuid: string;
     createdAt: number;
@@ -9,4 +11,5 @@ export class Persona {
     description: string;
     promptId: number;
     documentSetId: number;
+    prompt: Prompt;
 }
