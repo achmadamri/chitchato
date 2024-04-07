@@ -114,15 +114,18 @@
                 <th scope="col">Description</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody *ngIf="getPersonaListResponse == undefined">
               <!-- show loading -->
-              <tr *ngIf="getPersonaListResponse == undefined">
+              <tr>
                 <td colspan="3">
                   <div class="text-center">
-                    Loading
+                    <!-- loading.gif with size 50x50 -->
+                    <img src="../assets/img/theme/loading.gif" width="50" height="50">
                   </div>
                 </td>
               </tr>
+            </tbody>
+            <tbody *ngIf="getPersonaListResponse != undefined">
               <tr *ngFor="let persona of getPersonaListResponse.lstPersona" style="cursor: pointer;" (click)="openPersona(persona.uuid)">
                 <th scope="row">
                   <div class="media align-items-center">

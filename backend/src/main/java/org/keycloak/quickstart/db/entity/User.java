@@ -29,4 +29,8 @@ public class User {
     private String usernameDanswer;
 
     private String fastapiusersauth;
+
+    private Integer maxConnector;
+
+    private Integer maxPersona;
 }

@@ -3,6 +3,7 @@ import { GetPersonaListResponse } from 'src/app/services/getpersonalistresponse'
 import { GetPersonaResponse } from 'src/app/services/getpersonaresponse';
 import { Persona } from 'src/app/services/persona';
 import { PersonaService } from 'src/app/services/personaservice';
+import { Util } from 'src/app/util';
 
 @Component({
   selector: 'app-persona',
@@ -11,6 +12,7 @@ import { PersonaService } from 'src/app/services/personaservice';
 })
 export class PersonaComponent implements OnInit {
 
+  util: Util = new Util();
   clicked = false;
   public getPersonaListResponse: GetPersonaListResponse;
   public getPersonaResponse: GetPersonaResponse;
@@ -20,14 +22,19 @@ export class PersonaComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.getPersonaList();
+    this.getPersonaList();        
   }
 
   getPersonaList() {
     this.personaService.getPersonaList().subscribe(data => {
       this.getPersonaListResponse = data;
     }, error => {
-      window.location.href = '/';
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', 'Error getting persona list');
+      }
     });
   }
 
@@ -38,7 +45,12 @@ export class PersonaComponent implements OnInit {
       this.getPersonaResponse = data;
       this.clicked = false;
     }, error => {
-      window.location.href = '/';
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', 'Error getting persona');
+      }    
     });
   }
 
@@ -55,8 +67,12 @@ export class PersonaComponent implements OnInit {
       this.getPersonaResponse = data;
       this.clicked = false;
     }, error => {
-      window.location.href = '/';
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', 'Error updating persona');
+      }
     });
   }
-
 }
