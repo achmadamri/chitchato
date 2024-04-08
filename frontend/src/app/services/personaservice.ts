@@ -2,9 +2,8 @@ import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { KeycloakService } from "keycloak-angular";
 import { Observable } from "rxjs";
-import { Persona } from "./persona";
-import { GetPersonaResponse } from "./getpersonaresponse";
 import { GetPersonaListResponse } from "./getpersonalistresponse";
+import { GetPersonaResponse } from "./getpersonaresponse";
 
 
 @Injectable({

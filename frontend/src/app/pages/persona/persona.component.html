@@ -89,7 +89,7 @@
                   {{connector.createdAt | date: 'dd/MM/yyyy HH:mm:ss'}}
                 </td>
                 <td>
-                  <button type="button" class="btn btn-danger" (click)="deleteDocument(persona.uuid)" [disabled]="clicked">Delete</button>
+                  <button type="button" class="btn btn-danger" (click)="postDeleteDocument(connector.uuid)" [disabled]="clicked">Delete</button>
                 </td>
               </tr>              
             </tbody>

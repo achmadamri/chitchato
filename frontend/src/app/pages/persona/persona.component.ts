@@ -3,6 +3,7 @@ import { GetPersonaListResponse } from 'src/app/services/getpersonalistresponse'
 import { GetPersonaResponse } from 'src/app/services/getpersonaresponse';
 import { Persona } from 'src/app/services/persona';
 import { PersonaService } from 'src/app/services/personaservice';
+import { UploadService } from 'src/app/services/uploadservice';
 import { Util } from 'src/app/util';
 
 @Component({
@@ -18,11 +19,33 @@ export class PersonaComponent implements OnInit {
   public getPersonaResponse: GetPersonaResponse;
 
   constructor(
-    private personaService: PersonaService
+    private personaService: PersonaService,
+    private uploadService: UploadService
   ) { }
 
   ngOnInit() {
     this.getPersonaList();        
+  }
+
+  postDeleteDocument(connectorUuid: string) {
+    this.clicked = true;
+
+    this.uploadService.postDeleteDocument(connectorUuid).subscribe(data => {
+      console.log(data);
+
+      this.clicked = false;
+      this.util.showNotification(2, 'bottom', 'center', 'Persona deleted');
+      this.getPersonaList();
+    }, error => {
+      console.log(error);
+      
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', 'Error deleting persona');
+      }
+    });
   }
 
   getPersonaList() {
