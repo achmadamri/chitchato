@@ -45,11 +45,13 @@ import org.keycloak.quickstart.request.CreateConnectorRequest;
 import org.keycloak.quickstart.request.CreateConnectorRequest.ConnectorSpecificConfig;
 import org.keycloak.quickstart.request.CreateCredentialRequest;
 import org.keycloak.quickstart.request.DefaultPromptRequest;
+import org.keycloak.quickstart.request.DeleteAttempt;
 import org.keycloak.quickstart.request.DocumentSetRequest;
 import org.keycloak.quickstart.request.DocumentSetUpdateRequest;
 import org.keycloak.quickstart.request.PersonaRequest;
 import org.keycloak.quickstart.request.RunConnectorOnceRequest;
 import org.keycloak.quickstart.request.UpdateConnectorCredentialRequest;
+import org.keycloak.quickstart.request.UpdateConnectorRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -130,6 +132,70 @@ public class UploadController {
         taskPrompt = configRepository.findById("task_prompt").get().getValue();
         logger.info("taskPrompt: {}", taskPrompt);
     }
+
+	
+
+	@PostMapping("/delete-document")
+	public ResponseEntity<?> deleteDocument(@RequestParam String connectorUuid, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
+		// Initialize username
+		String username = jwt.getClaimAsString("preferred_username");
+		logger.info("username: {}", username);
+
+		// Load connector from database
+		Connector connectorExample = new Connector();
+		connectorExample.setUuid(connectorUuid);
+		connectorExample.setCreatedBy(username);
+		Connector connector = connectorRepository.findOne(Example.of(connectorExample)).orElse(null);
+
+		if (connector == null) {
+			return ResponseEntity.badRequest().body("Connector not found");
+		}
+
+		// Minimal 1 connector should be available
+		Connector connectorExampleCount = new Connector();
+		connectorExampleCount.setCreatedBy(username);
+		if (connectorRepository.count(Example.of(connectorExampleCount)) <= 1) {
+			return ResponseEntity.status(500).body("Min connector limit");
+		}
+
+		// Initialize ObjectMapper for JSON parsing
+		ObjectMapper objectMapper = new ObjectMapper();
+
+		// 1. Get CC Pair
+		logger.info("1. Get CC Pair");
+		ResponseEntity<String> ccPairResponse = getCcPair(String.valueOf(connector.getCcPairId()), userRepository.findByUsername(username).get().getFastapiusersauth());
+		if (!ccPairResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(ccPairResponse.getStatusCode()).body("Failed to get CC Pair");
+		}
+		JsonNode ccPairNode = objectMapper.readTree(ccPairResponse.getBody());
+		String strConnector = ccPairNode.path("connector").toString();
+		UpdateConnectorRequest updateConnectorRequest = objectMapper.readValue(strConnector, UpdateConnectorRequest.class);
+		updateConnectorRequest.setDisabled(true);
+
+		// 2. Pause Connector
+		logger.info("2. Pause Connector");
+		Mono<String> pauseConnectorMono = pauseConnector(updateConnectorRequest, connector.getConnectorId(), userRepository.findByUsername(username).get().getFastapiusersauth());
+		String pauseConnectorResponse = pauseConnectorMono.block();
+		if (Objects.isNull(pauseConnectorResponse)) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to pause connector");
+		}
+
+		// 3. Delete Attempt
+		logger.info("3. Delete Attempt");
+		DeleteAttempt deleteAttempt = new DeleteAttempt();
+		deleteAttempt.setConnectorId(connector.getConnectorId());
+		deleteAttempt.setCredentialId(connector.getCcPairId());
+
+		ResponseEntity<String> deletionResponse = deletionAttempt(deleteAttempt, userRepository.findByUsername(username).get().getFastapiusersauth());
+		if (!deletionResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(deletionResponse.getStatusCode()).body("Failed to delete attempt");
+		}
+
+		// Delete connector from database
+		connectorRepository.delete(connector);		
+
+		return ResponseEntity.ok("Process deleteDocument completed successfully");
+	}
 
 	@PostMapping("/add-document")
 	public ResponseEntity<?> addDocument(@RequestParam String personaUuid, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
@@ -341,6 +407,40 @@ public class UploadController {
 		}
 
 		return ResponseEntity.status(HttpStatus.OK).body("Process addDocument completed successfully");
+	}
+
+	public ResponseEntity<String> getCcPair(String ccPairId, String fastapiusersauth) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.set("Accept", "application/json");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
+
+		HttpEntity<String> entity = new HttpEntity<>(headers);
+		return restTemplate.exchange(baseUrl + "/api/manage/admin/cc-pair/" + ccPairId, HttpMethod.GET, entity, String.class);
+	}
+
+	public Mono<String> pauseConnector(@RequestBody UpdateConnectorRequest updateConnectorRequest, Integer ccPairId, String fastapiusersauth) {
+        return this.webClient.patch()
+                .uri("/api/manage/admin/connector/" + ccPairId)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .header("cookie", "fastapiusersauth=" + fastapiusersauth)
+                .bodyValue(updateConnectorRequest)
+                .retrieve() // Initiate the request
+                .bodyToMono(String.class); // Convert the response body to String
+    }
+
+	public ResponseEntity<String> deletionAttempt(@RequestBody DeleteAttempt deleteAttempt, String fastapiusersauth) {
+		String url = "https://chitchato.danswer.ai/api/manage/admin/deletion-attempt";
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+		headers.set("authority", "chitchato.danswer.ai");
+		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
+
+		HttpEntity<DeleteAttempt> entity = new HttpEntity<>(deleteAttempt, headers);
+		RestTemplate restTemplate = new RestTemplate();
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+		return response;
 	}
 
 	@PostMapping("/upload-combined")
@@ -768,7 +868,6 @@ public class UploadController {
 		}		
 	}
 
-	// @GetMapping("/indexing-status")
 	public ResponseEntity<String> getIndexingStatus(String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Accept", "application/json");
@@ -778,7 +877,6 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector/indexing-status?secondary_index=false", HttpMethod.GET, entity, String.class);
 	}
 
-	// @PostMapping("/upload-file")
 	public ResponseEntity<String> uploadFile(@RequestParam("files") MultipartFile file, String fastapiusersauth) {
 		// Check if the file is empty or not
 		if (file.isEmpty()) {
@@ -812,7 +910,6 @@ public class UploadController {
 		return convFile;
 	}
 
-	// @PostMapping("/create-connector")
 	public ResponseEntity<String> createConnector(@RequestBody CreateConnectorRequest createConnectorRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -823,7 +920,6 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector", HttpMethod.POST, entity, String.class);
 	}
 
-	// @PostMapping("/create-credential")
 	public ResponseEntity<String> createCredential(@RequestBody CreateCredentialRequest createCredentialRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -834,7 +930,6 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/credential", HttpMethod.POST, entity, String.class);
 	}
 
-	// @PutMapping("/update-connector-credential")
 	public ResponseEntity<String> updateConnectorCredential(@RequestBody UpdateConnectorCredentialRequest updateConnectorCredentialRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -847,7 +942,6 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/connector/" + connectorId + "/credential/" + credentialId, HttpMethod.PUT, entity, String.class);
 	}
 
-	// @PostMapping("/run-connector-once")
 	public ResponseEntity<String> runConnectorOnce(@RequestBody RunConnectorOnceRequest runOnceRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -858,7 +952,6 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector/run-once", HttpMethod.POST, entity, String.class);
 	}
 
-	// @PostMapping("/create-document-set")
 	public ResponseEntity<String> createDocumentSet(@RequestBody DocumentSetRequest documentSetRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -870,7 +963,6 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.POST, entity, String.class);
 	}
 
-	// @PatchMapping("/update-document-set")
     public Mono<String> updateDocumentSet(@RequestBody DocumentSetUpdateRequest documentSetUpdateRequest, String fastapiusersauth) {
         return this.webClient.patch()
                 .uri("/api/manage/admin/document-set")
@@ -882,7 +974,6 @@ public class UploadController {
                 .bodyToMono(String.class); // Convert the response body to String
     }
 
-	// @PostMapping("/api/create-default-prompt")
 	public ResponseEntity<String> createDefaultPrompt(@RequestBody DefaultPromptRequest defaultPromptRequest, String fastapiusersauth) {
 		String url = "https://chitchato.danswer.ai/api/prompt";
 		HttpHeaders headers = new HttpHeaders();
@@ -897,7 +988,6 @@ public class UploadController {
 		return response;
 	}
 
-	// @PostMapping("/api/create-persona")
 	public ResponseEntity<String> createPersona(@RequestBody PersonaRequest personaRequest, String fastapiusersauth) {
 		String url = "https://chitchato.danswer.ai/api/admin/persona";
 		HttpHeaders headers = new HttpHeaders();
