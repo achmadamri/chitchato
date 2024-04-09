@@ -15,6 +15,9 @@ export class PersonaComponent implements OnInit {
 
   util: Util = new Util();
   clicked = false;
+  showList = true;
+  showDetails = false;
+  showAdd = false;
   public getPersonaListResponse: GetPersonaListResponse;
   public getPersonaResponse: GetPersonaResponse;
 
@@ -25,6 +28,46 @@ export class PersonaComponent implements OnInit {
 
   ngOnInit() {
     this.getPersonaList();        
+  }
+
+  doShowList(uuid: string) {
+    this.showList = true;
+    this.showDetails = false;
+    this.showAdd = false;
+
+    this.getPersonaListResponse = null;
+    this.getPersonaResponse = null;
+    this.getPersonaList();
+  }
+
+  doShowAdd(uuid: string) {
+    this.clicked = true;
+
+    this.showList = false;
+    this.showDetails = false;
+    this.showAdd = true;
+
+    this.clicked = false;
+  }
+
+  doShowDetails(uuid: string) {
+    this.clicked = true;
+
+    this.showList = false;
+    this.showDetails = true;
+    this.showAdd = false;
+
+    this.personaService.getPersona(uuid).subscribe(data => {
+      this.getPersonaResponse = data;
+      this.clicked = false;
+    }, error => {
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', 'Error getting persona');
+      }    
+    });
   }
 
   postDeleteDocument(connectorUuid: string) {
@@ -38,12 +81,12 @@ export class PersonaComponent implements OnInit {
       this.getPersonaList();
     }, error => {
       console.log(error);
-      
+
       if (error.status === 403) {
         window.location.href = '/';        
       } else {        
         this.clicked = false;
-        this.util.showNotification(4, 'bottom', 'center', 'Error deleting persona');
+        this.util.showNotification(4, 'bottom', 'center', error.error.message);
       }
     });
   }
@@ -59,28 +102,6 @@ export class PersonaComponent implements OnInit {
         this.util.showNotification(4, 'bottom', 'center', 'Error getting persona list');
       }
     });
-  }
-
-  openPersona(uuid: string) {
-    this.clicked = true;
-
-    this.personaService.getPersona(uuid).subscribe(data => {
-      this.getPersonaResponse = data;
-      this.clicked = false;
-    }, error => {
-      if (error.status === 403) {
-        window.location.href = '/';        
-      } else {        
-        this.clicked = false;
-        this.util.showNotification(4, 'bottom', 'center', 'Error getting persona');
-      }    
-    });
-  }
-
-  back(uuid: string) {
-    this.getPersonaListResponse = null;
-    this.getPersonaResponse = null;
-    this.getPersonaList();
   }
 
   update(uuid: string) {

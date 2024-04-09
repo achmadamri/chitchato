@@ -135,61 +135,61 @@ public class UploadController {
 	@PostMapping("/delete-document")
 	public ResponseEntity<?> deleteDocument(@RequestParam String connectorUuid, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
 		// Initialize username
-		// String username = jwt.getClaimAsString("preferred_username");
-		// logger.info("username: {}", username);
+		String username = jwt.getClaimAsString("preferred_username");
+		logger.info("username: {}", username);
 
-		// // Load connector from database
-		// Connector connectorExample = new Connector();
-		// connectorExample.setUuid(connectorUuid);
-		// connectorExample.setCreatedBy(username);
-		// Connector connector = connectorRepository.findOne(Example.of(connectorExample)).orElse(null);
+		// Load connector from database
+		Connector connectorExample = new Connector();
+		connectorExample.setUuid(connectorUuid);
+		connectorExample.setCreatedBy(username);
+		Connector connector = connectorRepository.findOne(Example.of(connectorExample)).orElse(null);
 
-		// if (connector == null) {
-		// 	return ResponseEntity.badRequest().body("Connector not found");
-		// }
+		if (connector == null) {
+			return ResponseEntity.badRequest().body("{\"message\":\"Connector not found\"}");
+		}
 
-		// // Minimal 1 connector should be available
-		// Connector connectorExampleCount = new Connector();
-		// connectorExampleCount.setCreatedBy(username);
-		// if (connectorRepository.count(Example.of(connectorExampleCount)) <= 1) {
-		// 	return ResponseEntity.status(500).body("Min connector limit");
-		// }
+		// Minimal 1 connector should be available
+		Connector connectorExampleCount = new Connector();
+		connectorExampleCount.setCreatedBy(username);
+		if (connectorRepository.count(Example.of(connectorExampleCount)) <= 1) {
+			return ResponseEntity.status(500).body("{\"message\":\"Min connector limit\"}");
+		}
 
-		// // Initialize ObjectMapper for JSON parsing
-		// ObjectMapper objectMapper = new ObjectMapper();
+		// Initialize ObjectMapper for JSON parsing
+		ObjectMapper objectMapper = new ObjectMapper();
 
-		// // 1. Get CC Pair
-		// logger.info("1. Get CC Pair");
-		// ResponseEntity<String> ccPairResponse = getCcPair(String.valueOf(connector.getCcPairId()), userRepository.findByUsername(username).get().getFastapiusersauth());
-		// if (!ccPairResponse.getStatusCode().is2xxSuccessful()) {
-		// 	return ResponseEntity.status(ccPairResponse.getStatusCode()).body("Failed to get CC Pair");
-		// }
-		// JsonNode ccPairNode = objectMapper.readTree(ccPairResponse.getBody());
-		// String strConnector = ccPairNode.path("connector").toString();
-		// UpdateConnectorRequest updateConnectorRequest = objectMapper.readValue(strConnector, UpdateConnectorRequest.class);
-		// updateConnectorRequest.setDisabled(true);
+		// 1. Get CC Pair
+		logger.info("1. Get CC Pair");
+		ResponseEntity<String> ccPairResponse = getCcPair(String.valueOf(connector.getCcPairId()), userRepository.findByUsername(username).get().getFastapiusersauth());
+		if (!ccPairResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(ccPairResponse.getStatusCode()).body("Failed to get CC Pair");
+		}
+		JsonNode ccPairNode = objectMapper.readTree(ccPairResponse.getBody());
+		String strConnector = ccPairNode.path("connector").toString();
+		UpdateConnectorRequest updateConnectorRequest = objectMapper.readValue(strConnector, UpdateConnectorRequest.class);
+		updateConnectorRequest.setDisabled(true);
 
-		// // 2. Pause Connector
-		// logger.info("2. Pause Connector");
-		// Mono<String> pauseConnectorMono = pauseConnector(updateConnectorRequest, connector.getConnectorId(), userRepository.findByUsername(username).get().getFastapiusersauth());
-		// String pauseConnectorResponse = pauseConnectorMono.block();
-		// if (Objects.isNull(pauseConnectorResponse)) {
-		// 	return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to pause connector");
-		// }
+		// 2. Pause Connector
+		logger.info("2. Pause Connector");
+		Mono<String> pauseConnectorMono = pauseConnector(updateConnectorRequest, connector.getConnectorId(), userRepository.findByUsername(username).get().getFastapiusersauth());
+		String pauseConnectorResponse = pauseConnectorMono.block();
+		if (Objects.isNull(pauseConnectorResponse)) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to pause connector");
+		}
 
-		// // 3. Delete Attempt
-		// logger.info("3. Delete Attempt");
-		// DeleteAttempt deleteAttempt = new DeleteAttempt();
-		// deleteAttempt.setConnectorId(connector.getConnectorId());
-		// deleteAttempt.setCredentialId(connector.getCcPairId());
+		// 3. Delete Attempt
+		logger.info("3. Delete Attempt");
+		DeleteAttempt deleteAttempt = new DeleteAttempt();
+		deleteAttempt.setConnectorId(connector.getConnectorId());
+		deleteAttempt.setCredentialId(connector.getCcPairId());
 
-		// ResponseEntity<String> deletionResponse = deletionAttempt(deleteAttempt, userRepository.findByUsername(username).get().getFastapiusersauth());
-		// if (!deletionResponse.getStatusCode().is2xxSuccessful()) {
-		// 	return ResponseEntity.status(deletionResponse.getStatusCode()).body("Failed to delete attempt");
-		// }
+		ResponseEntity<String> deletionResponse = deletionAttempt(deleteAttempt, userRepository.findByUsername(username).get().getFastapiusersauth());
+		if (!deletionResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(deletionResponse.getStatusCode()).body("Failed to delete attempt");
+		}
 
-		// // Delete connector from database
-		// connectorRepository.delete(connector);		
+		// Delete connector from database
+		connectorRepository.delete(connector);		
 		
 		return ResponseEntity.ok("{\"message\":\"Process deleteDocument completed successfully\"}");
 	}
