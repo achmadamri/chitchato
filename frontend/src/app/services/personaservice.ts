@@ -21,7 +21,7 @@ export class PersonaService {
     const params = new HttpParams()
       ;
 
-    return this.httpClient.get<GetPersonaListResponse>(`${this.apiUrl}/personalist`, { headers, params });
+    return this.httpClient.get<GetPersonaListResponse>(`${this.apiUrl}/persona-list`, { headers, params });
   }
 
   getPersona(uuid: string): Observable<GetPersonaResponse> {

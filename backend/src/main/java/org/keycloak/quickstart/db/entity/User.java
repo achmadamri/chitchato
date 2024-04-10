@@ -30,6 +30,8 @@ public class User {
 
     private String fastapiusersauth;
 
+    private String device;
+
     private Integer maxConnector;
 
     private Integer maxPersona;

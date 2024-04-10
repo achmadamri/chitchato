@@ -52,7 +52,7 @@ public class WebController {
 	@Autowired
 	private ConnectorRepository connectorRepository;
 
-	@GetMapping("/personalist")
+	@GetMapping("/persona-list")
     public ResponseEntity<GetPersonaListResponse> getPersonaList(@AuthenticationPrincipal Jwt jwt) {
         GetPersonaListResponse response = new GetPersonaListResponse();
 
