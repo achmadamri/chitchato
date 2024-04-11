@@ -4,6 +4,7 @@ import { GetPersonaResponse } from 'src/app/services/getpersonaresponse';
 import { GetUserResponse } from 'src/app/services/getuserresponse';
 import { Persona } from 'src/app/services/persona';
 import { PersonaService } from 'src/app/services/personaservice';
+import { PostUpdatePersonaRequest } from 'src/app/services/postupdatepersonarequest';
 import { UploadService } from 'src/app/services/uploadservice';
 import { UserService } from 'src/app/services/userservice';
 import { Util } from 'src/app/util';
@@ -20,10 +21,15 @@ export class PersonaComponent implements OnInit {
   showList = true;
   showDetails = false;
   personaUuid = '';
+  name = '';
+  description = '';
+  systemPrompt = '';
+  taskPrompt = '';  
   showAdd = false;
   public getUserResponse: GetUserResponse
   public getPersonaListResponse: GetPersonaListResponse;
   public getPersonaResponse: GetPersonaResponse;
+  public postUpdatePersonaRequest: PostUpdatePersonaRequest = new PostUpdatePersonaRequest();
   selectedFile: File;
 
   constructor(
@@ -70,6 +76,12 @@ export class PersonaComponent implements OnInit {
       
       this.personaService.getPersona(uuid).subscribe(data => {
         this.getPersonaResponse = data;
+
+        this.postUpdatePersonaRequest.name = this.getPersonaResponse.persona.name;
+        this.postUpdatePersonaRequest.description = this.getPersonaResponse.persona.description;
+        this.postUpdatePersonaRequest.systemPrompt = this.getPersonaResponse.prompt.systemPrompt;
+        this.postUpdatePersonaRequest.taskPrompt = this.getPersonaResponse.prompt.taskPrompt;
+
         console.log(data);
         this.clicked = false;
       }, error => {
@@ -92,6 +104,30 @@ export class PersonaComponent implements OnInit {
   
   onFileChanged(event) {
     this.selectedFile = event.target.files[0];
+  }
+
+  postUpdatePersona() {
+    this.clicked = true;
+
+    this.postUpdatePersonaRequest.personaUuid = this.personaUuid;
+    
+    this.personaService.postUpdatePersona(this.postUpdatePersonaRequest).subscribe(data => {
+      console.log(data);
+
+      this.clicked = false;
+      this.util.showNotification(2, 'bottom', 'center', 'Persona updated');
+      
+      this.doShowDetails(this.personaUuid);
+    }, error => {
+      console.log(error);
+
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', error.error.message);
+      }
+    });
   }
 
   postDeleteDocument(connectorUuid: string) {

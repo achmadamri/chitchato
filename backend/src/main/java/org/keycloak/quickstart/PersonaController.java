@@ -20,11 +20,14 @@ import java.util.List;
 import org.keycloak.quickstart.db.entity.Connector;
 import org.keycloak.quickstart.db.entity.Persona;
 import org.keycloak.quickstart.db.entity.Prompt;
+import org.keycloak.quickstart.db.entity.User;
 import org.keycloak.quickstart.db.repository.ConnectorRepository;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
 import org.keycloak.quickstart.db.repository.PromptRepository;
-import org.keycloak.quickstart.request.DocumentSetUpdateRequest;
+import org.keycloak.quickstart.db.repository.UserRepository;
+import org.keycloak.quickstart.request.PersonaUpdateRequest;
 import org.keycloak.quickstart.request.PromptUpdateRequest;
+import org.keycloak.quickstart.request.UpdatePersonaRequest;
 import org.keycloak.quickstart.response.GetPersonaListResponse;
 import org.keycloak.quickstart.response.GetPersonaResponse;
 import org.slf4j.Logger;
@@ -32,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -43,6 +47,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import reactor.core.publisher.Mono;
 
@@ -62,6 +69,9 @@ public class PersonaController {
 
 	@Autowired
 	private ConnectorRepository connectorRepository;
+
+	@Autowired
+	private UserRepository userRepository;
 
 	private final WebClient webClient;
 
@@ -113,14 +123,112 @@ public class PersonaController {
         return ResponseEntity.ok(response);
     }
 
-    // @PostMapping("/update-persona")
-	// public ResponseEntity<?> postUpdatePersona(@RequestParam String personaUuid, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
-		
+    @PostMapping("/update-persona")
+	public ResponseEntity<?> postUpdatePersona(@RequestBody UpdatePersonaRequest updatePersonaRequest, @AuthenticationPrincipal Jwt jwt) {
+        // Initialize username
+		String username = jwt.getClaimAsString("preferred_username");
+		logger.info("username: {}", username);
 
-	// 	return ResponseEntity.ok("{\"message\":\"Process upload document completed successfully\"}");
-	// }
+		// Load user from database
+		User userExample = new User();
+		userExample.setUsername(username);
+		User user = userRepository.findOne(Example.of(userExample)).orElse(null);
 
-    public Mono<String> updatePrompt(PromptUpdateRequest promptUpdateRequest, String promptId, String fastapiusersauth) {
+        // Load persona from database
+        Persona personaExample = new Persona();
+        personaExample.setCreatedBy(username);
+        personaExample.setUuid(updatePersonaRequest.getPersonaUuid());
+        Persona persona = personaRepository.findOne(Example.of(personaExample)).orElse(null);
+
+        if (persona == null) {
+            return ResponseEntity.badRequest().body("{\"message\":\"Persona not found\"}");
+        }
+
+         // Load prompt from database
+        Prompt promptExample = new Prompt();
+        promptExample.setCreatedBy(username);
+        promptExample.setPromptId(persona.getPromptId());
+        Prompt prompt = promptRepository.findOne(Example.of(promptExample)).orElse(null);
+        
+        if (prompt == null) {
+            return ResponseEntity.badRequest().body("{\"message\":\"Prompt not found\"}");
+        }
+
+        // Update prompt
+        PromptUpdateRequest promptUpdateRequest = new PromptUpdateRequest();
+        promptUpdateRequest.setName(prompt.getName());
+        promptUpdateRequest.setDescription(prompt.getDescription());
+        promptUpdateRequest.setShared(true);
+        promptUpdateRequest.setSystemPrompt(updatePersonaRequest.getSystemPrompt());
+        promptUpdateRequest.setTaskPrompt(updatePersonaRequest.getTaskPrompt());
+        promptUpdateRequest.setIncludeCitations(false);
+
+        logger.info("promptUpdateRequest: {}", promptUpdateRequest);
+        ResponseEntity<?> updatePromptResponseEntity = updatePrompt(promptUpdateRequest, persona.getPromptId(), user.getFastapiusersauth())
+        .flatMap(response -> {
+			try {
+				// Since we're making it synchronous, return the OK status directly
+				return Mono.just(ResponseEntity.ok(HttpStatus.OK));
+			} catch (NumberFormatException e) {
+				logger.error("Failed to parse documentSetId from response", e);
+				return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to run document"));
+			}
+		})
+		.block(); // This blocks until the operation is completed
+
+        if (updatePromptResponseEntity.getStatusCode() != HttpStatus.OK) {
+            return ResponseEntity.badRequest().body("{\"message\":\"Failed to update prompt\"}");
+        }
+
+        // Update persona
+        PersonaUpdateRequest personaUpdateRequest = new PersonaUpdateRequest();
+        personaUpdateRequest.setName(updatePersonaRequest.getName());
+        personaUpdateRequest.setDescription(updatePersonaRequest.getDescription());
+        personaUpdateRequest.setShared(true);
+        personaUpdateRequest.setNumChunks(10);
+        personaUpdateRequest.setLlmRelevanceFilter(false);
+        personaUpdateRequest.setLlmFilterExtraction(false);
+        personaUpdateRequest.setRecencyBias("base_decay");
+        personaUpdateRequest.setPromptIds(List.of(persona.getPromptId()));
+        personaUpdateRequest.setDocumentSetIds(List.of(persona.getDocumentSetId()));
+        personaUpdateRequest.setLlmModelVersionOverride(null);
+        personaUpdateRequest.setStarterMessages(List.of());
+
+        logger.info("updatePersonaRequest: {}", updatePersonaRequest);
+        ResponseEntity<?> updatePersonaResponseEntity = updatePersona(personaUpdateRequest, persona.getPersonaId(), user.getFastapiusersauth())
+        .flatMap(response -> {
+			try {
+				// Since we're making it synchronous, return the OK status directly
+				return Mono.just(ResponseEntity.ok(HttpStatus.OK));
+			} catch (NumberFormatException e) {
+				logger.error("Failed to parse documentSetId from response", e);
+				return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to run document"));
+			}
+		})
+		.block(); // This blocks until the operation is completed
+
+        if (updatePersonaResponseEntity.getStatusCode() != HttpStatus.OK) {
+            return ResponseEntity.badRequest().body("{\"message\":\"Failed to update persona\"}");
+        }
+
+        // Update persona in database
+        persona.setName(updatePersonaRequest.getName());
+        persona.setDescription(updatePersonaRequest.getDescription());
+        personaRepository.save(persona);
+
+        // Update prompt in database
+        Prompt updatePromptExample = new Prompt();
+        updatePromptExample.setCreatedBy(username);
+        updatePromptExample.setPromptId(persona.getPromptId());
+        Prompt updatePrompt = promptRepository.findOne(Example.of(updatePromptExample)).orElse(null);
+        updatePrompt.setSystemPrompt(updatePersonaRequest.getSystemPrompt());
+        updatePrompt.setTaskPrompt(updatePersonaRequest.getTaskPrompt());
+        promptRepository.save(updatePrompt);
+
+		return ResponseEntity.ok("{\"message\":\"Process update persona completed successfully\"}");
+	}
+
+    public Mono<String> updatePrompt(PromptUpdateRequest promptUpdateRequest, Integer promptId, String fastapiusersauth) {
         return this.webClient.patch()
                 .uri("/api/prompt/" + promptId)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -131,13 +239,13 @@ public class PersonaController {
                 .bodyToMono(String.class); // Convert the response body to String
     }
 
-    public Mono<String> updatePersona(PromptUpdateRequest promptUpdateRequest, String personaId, String fastapiusersauth) {
+    public Mono<String> updatePersona(PersonaUpdateRequest personaUpdateRequest, Integer personaId, String fastapiusersauth) {
         return this.webClient.patch()
                 .uri("/api/admin/persona/" + personaId)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .header("cookie", "fastapiusersauth=" + fastapiusersauth)
-                .bodyValue(promptUpdateRequest)
+                .bodyValue(personaUpdateRequest)
                 .retrieve() // Initiate the request
                 .bodyToMono(String.class); // Convert the response body to String
     }

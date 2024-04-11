@@ -183,7 +183,7 @@
                 <div class="col-lg-12">
                   <div class="form-group">
                     <label class="form-control-label" for="input-name">Name</label>
-                    <input type="text" id="input-name" class="form-control form-control-alternative" placeholder="" ngModel="{{getPersonaResponse.persona.name}}">
+                    <input type="text" id="input-name" class="form-control form-control-alternative" placeholder="" ngModel="{{postUpdatePersonaRequest.name}}" name="name">
                   </div>
                 </div>
               </div>
@@ -191,7 +191,7 @@
                 <div class="col-lg-12">
                   <div class="form-group">
                     <label class="form-control-label" for="input-description">Description</label>
-                    <textarea class="form-control form-control-alternative" id="input-description" rows="5">{{getPersonaResponse.persona.description}}</textarea>
+                    <textarea class="form-control form-control-alternative" id="input-description" rows="5" ngModel="{{postUpdatePersonaRequest.description}}" name="description"></textarea>
                   </div>
                 </div>
               </div>
@@ -199,7 +199,7 @@
                 <div class="col-lg-12">
                   <div class="form-group">
                     <label class="form-control-label" for="input-system-prompt">System Prompt</label>
-                    <textarea class="form-control form-control-alternative" id="input-system-prompt" rows="5">{{getPersonaResponse.prompt.systemPrompt}}</textarea>
+                    <textarea class="form-control form-control-alternative" id="input-system-prompt" rows="5" ngModel="{{postUpdatePersonaRequest.systemPrompt}}" name="systemPrompt"></textarea>
                   </div>
                 </div>
               </div>
@@ -207,14 +207,14 @@
                 <div class="col-lg-12">
                   <div class="form-group">
                     <label class="form-control-label" for="input-task-prompt">Task Prompt</label>
-                    <textarea class="form-control form-control-alternative" id="input-task-prompt" rows="5">{{getPersonaResponse.prompt.taskPrompt}}</textarea>
+                    <textarea class="form-control form-control-alternative" id="input-task-prompt" rows="5" ngModel="{{postUpdatePersonaRequest.taskPrompt}}" name="taskPrompt"></textarea>
                   </div>
                 </div>
               </div>              
             </div>
             <div class="text-center">
               <button type="button" class="btn btn-primary" (click)="doShowList(null)" [disabled]="clicked">Back</button>
-              <button type="button" class="btn btn-primary" (click)="update(null)" [disabled]="clicked">Update</button>
+              <button type="button" class="btn btn-primary" (click)="postUpdatePersona()" [disabled]="clicked">Update</button>
             </div>
           </form>          
         </div>

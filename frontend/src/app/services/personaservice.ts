@@ -4,6 +4,7 @@ import { KeycloakService } from "keycloak-angular";
 import { Observable } from "rxjs";
 import { GetPersonaListResponse } from "./getpersonalistresponse";
 import { GetPersonaResponse } from "./getpersonaresponse";
+import { PostUpdatePersonaRequest } from "./postupdatepersonarequest";
 
 
 @Injectable({
@@ -33,5 +34,12 @@ export class PersonaService {
       ;
 
     return this.httpClient.get<GetPersonaResponse>(`${this.apiUrl}/persona`, { headers, params });
+  }
+
+  postUpdatePersona(postUpdatePersonaRequest: PostUpdatePersonaRequest): Observable<any> {
+    const headers = new HttpHeaders()
+      .set('Content-Type', 'application/json');
+
+    return this.httpClient.post(`${this.apiUrl}/update-persona`, postUpdatePersonaRequest, { headers });
   }
 }

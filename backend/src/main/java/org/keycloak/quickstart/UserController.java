@@ -44,9 +44,13 @@ public class UserController {
     public ResponseEntity<GetUserResponse> getPersonaList(@AuthenticationPrincipal Jwt jwt) {
         GetUserResponse response = new GetUserResponse();
 
+        // Initialize username
+		String username = jwt.getClaimAsString("preferred_username");
+		logger.info("username: {}", username);
+
         // Load user from database
         User userExample = new User();
-        userExample.setUsername(jwt.getClaimAsString("preferred_username"));
+        userExample.setUsername(username);
         Optional<User> user = userRepository.findOne(Example.of(userExample));
 
         if (user.isPresent()) {

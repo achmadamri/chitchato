@@ -139,6 +139,11 @@ public class UploadController {
 		String username = jwt.getClaimAsString("preferred_username");
 		logger.info("username: {}", username);
 
+		// Load user from database
+		User userExample = new User();
+		userExample.setUsername(username);
+		User user = userRepository.findOne(Example.of(userExample)).orElse(null);
+
 		// Load connector from database
 		Connector connectorExample = new Connector();
 		connectorExample.setUuid(connectorUuid);
@@ -161,7 +166,7 @@ public class UploadController {
 
 		// 1. Get CC Pair
 		logger.info("1. Get CC Pair");
-		ResponseEntity<String> ccPairResponse = getCcPair(String.valueOf(connector.getCcPairId()), userRepository.findByUsername(username).get().getFastapiusersauth());
+		ResponseEntity<String> ccPairResponse = getCcPair(String.valueOf(connector.getCcPairId()), user.getFastapiusersauth());
 		if (!ccPairResponse.getStatusCode().is2xxSuccessful()) {
 			return ResponseEntity.status(ccPairResponse.getStatusCode()).body("Failed to get CC Pair");
 		}
@@ -172,7 +177,7 @@ public class UploadController {
 
 		// 2. Pause Connector
 		logger.info("2. Pause Connector");
-		Mono<String> pauseConnectorMono = pauseConnector(updateConnectorRequest, connector.getConnectorId(), userRepository.findByUsername(username).get().getFastapiusersauth());
+		Mono<String> pauseConnectorMono = pauseConnector(updateConnectorRequest, connector.getConnectorId(), user.getFastapiusersauth());
 		String pauseConnectorResponse = pauseConnectorMono.block();
 		if (Objects.isNull(pauseConnectorResponse)) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to pause connector");
@@ -381,12 +386,10 @@ public class UploadController {
 
 		documentSetUpdateRequest.setCcPairIds(ccPairIds);
 
+		logger.info("documentSetUpdateRequest: {}", documentSetUpdateRequest);		
 		ResponseEntity<?> responseEntity = updateDocumentSet(documentSetUpdateRequest, user.getFastapiusersauth())
 		.flatMap(response -> {
 			try {
-				// Assuming the response is the document set ID as a string
-				// int documentSetId = Integer.parseInt(response);
-				// logger.info("7. Update Document Set. documentSetId {}", documentSetId);
 				// Since we're making it synchronous, return the OK status directly
 				return Mono.just(ResponseEntity.ok(HttpStatus.OK));
 			} catch (NumberFormatException e) {
