@@ -23,25 +23,36 @@ import org.keycloak.quickstart.db.entity.Prompt;
 import org.keycloak.quickstart.db.repository.ConnectorRepository;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
 import org.keycloak.quickstart.db.repository.PromptRepository;
+import org.keycloak.quickstart.request.DocumentSetUpdateRequest;
+import org.keycloak.quickstart.request.PromptUpdateRequest;
 import org.keycloak.quickstart.response.GetPersonaListResponse;
 import org.keycloak.quickstart.response.GetPersonaResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/persona")
 public class PersonaController {
 
 	private static final Logger logger = LoggerFactory.getLogger(PersonaController.class);
+
+    private String baseUrl = "https://chitchato.danswer.ai/";
 
 	@Autowired
 	private PersonaRepository personaRepository;
@@ -51,6 +62,12 @@ public class PersonaController {
 
 	@Autowired
 	private ConnectorRepository connectorRepository;
+
+	private final WebClient webClient;
+
+    public PersonaController(WebClient.Builder webClientBuilder) {
+        this.webClient = webClientBuilder.baseUrl(baseUrl).build();
+    }
 
 	@GetMapping("/persona-list")
     public ResponseEntity<GetPersonaListResponse> getPersonaList(@AuthenticationPrincipal Jwt jwt) {
@@ -94,5 +111,34 @@ public class PersonaController {
 
         // Return the list of personas as a JSON string
         return ResponseEntity.ok(response);
+    }
+
+    // @PostMapping("/update-persona")
+	// public ResponseEntity<?> postUpdatePersona(@RequestParam String personaUuid, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
+		
+
+	// 	return ResponseEntity.ok("{\"message\":\"Process upload document completed successfully\"}");
+	// }
+
+    public Mono<String> updatePrompt(PromptUpdateRequest promptUpdateRequest, String promptId, String fastapiusersauth) {
+        return this.webClient.patch()
+                .uri("/api/prompt/" + promptId)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .header("cookie", "fastapiusersauth=" + fastapiusersauth)
+                .bodyValue(promptUpdateRequest)
+                .retrieve() // Initiate the request
+                .bodyToMono(String.class); // Convert the response body to String
+    }
+
+    public Mono<String> updatePersona(PromptUpdateRequest promptUpdateRequest, String personaId, String fastapiusersauth) {
+        return this.webClient.patch()
+                .uri("/api/admin/persona/" + personaId)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .header("cookie", "fastapiusersauth=" + fastapiusersauth)
+                .bodyValue(promptUpdateRequest)
+                .retrieve() // Initiate the request
+                .bodyToMono(String.class); // Convert the response body to String
     }
 }

@@ -134,7 +134,7 @@ public class UploadController {
     }
 
 	@PostMapping("/delete-document")
-	public ResponseEntity<?> deleteDocument(@RequestParam String connectorUuid, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
+	public ResponseEntity<?> postDeleteDocument(@RequestParam String connectorUuid, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
 		// Initialize username
 		String username = jwt.getClaimAsString("preferred_username");
 		logger.info("username: {}", username);
@@ -196,7 +196,7 @@ public class UploadController {
 	}
 
 	@PostMapping("/upload-document")
-	public ResponseEntity<?> uploadDocument(@RequestParam String personaUuid, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
+	public ResponseEntity<?> postUploadDocument(@RequestParam String personaUuid, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
 		if (file.isEmpty()) {
 			return ResponseEntity.badRequest().body("File is empty");
 		}
@@ -416,7 +416,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/cc-pair/" + ccPairId, HttpMethod.GET, entity, String.class);
 	}
 
-	public Mono<String> pauseConnector(@RequestBody UpdateConnectorRequest updateConnectorRequest, Integer ccPairId, String fastapiusersauth) {
+	public Mono<String> pauseConnector(UpdateConnectorRequest updateConnectorRequest, Integer ccPairId, String fastapiusersauth) {
         return this.webClient.patch()
                 .uri("/api/manage/admin/connector/" + ccPairId)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -427,7 +427,7 @@ public class UploadController {
                 .bodyToMono(String.class); // Convert the response body to String
     }
 
-	public ResponseEntity<String> deletionAttempt(@RequestBody DeleteAttempt deleteAttempt, String fastapiusersauth) {
+	public ResponseEntity<String> deletionAttempt(DeleteAttempt deleteAttempt, String fastapiusersauth) {
 		String url = "https://chitchato.danswer.ai/api/manage/admin/deletion-attempt";
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -441,431 +441,6 @@ public class UploadController {
 		return response;
 	}
 
-	@PostMapping("/upload-combined")
-	public ResponseEntity<?> uploadCombined(@RequestParam String personaUuid, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
-		if (file.isEmpty()) {
-			return ResponseEntity.badRequest().body("File is empty");
-		}
-
-		// Initialize ObjectMapper for JSON parsing
-    	ObjectMapper objectMapper = new ObjectMapper();
-
-		// Initialize username
-		String username = jwt.getClaimAsString("preferred_username");
-		logger.info("username: {}", username);
-
-		// Initialize fastapiusersauth
-		String fastapiusersauth = userRepository.findByUsername(username).get().getFastapiusersauth();
-
-		// Initialize uuid
-		String uuid = UUID.randomUUID().toString();
-		logger.info("uuid: {}", uuid);
-
-		// Check is there any Persona exist with this user
-		Persona personaExample = new Persona();
-		personaExample.setCreatedBy(username);
-		Optional<Persona> personaOptional = personaRepository.findOne(Example.of(personaExample));
-		if (personaOptional.isPresent()) {
-			DocumentSet documentSetCountExample = new DocumentSet();
-			documentSetCountExample.setCreatedBy(username);
-			if (documentSetRepository.count(Example.of(documentSetCountExample)) >= 2) {
-				return ResponseEntity.status(500).body("Max document limit");
-			}
-
-			// 1. Upload the file
-			logger.info("1. Upload the file");
-			ResponseEntity<String> uploadResponse = uploadFile(file, fastapiusersauth);
-			if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(uploadResponse.getStatusCode()).body("Failed to upload file");
-			}
-			JsonNode uploadNode = objectMapper.readTree(uploadResponse.getBody());
-			String filePaths = uploadNode.get("file_paths").get(0).asText();
-			logger.info("1. Upload the file. filePaths {}", filePaths);
-
-			// 2. Create Connector
-			// Assuming filePaths is extracted correctly from the upload response
-			logger.info("2. Create Connector");
-			CreateConnectorRequest connectorRequest = new CreateConnectorRequest();
-			connectorRequest.setName("FileConnector-" + System.currentTimeMillis());
-			connectorRequest.setSource("file");
-			connectorRequest.setInputType("load_state");
-			ConnectorSpecificConfig connectorSpecificConfig = new ConnectorSpecificConfig();
-			List<String> fileLocations = new ArrayList<>();
-			fileLocations.add(filePaths);
-			connectorSpecificConfig.setFileLocations(fileLocations);
-			connectorRequest.setConnectorSpecificConfig(connectorSpecificConfig);
-			connectorRequest.setDisabled(false);
-			connectorRequest.setRefreshFreq(null);		
-
-			ResponseEntity<String> connectorResponse = createConnector(connectorRequest, fastapiusersauth);
-			if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to create connector");
-			}
-			// Extract connector ID from connectorResponse
-			JsonNode connectorNode = objectMapper.readTree(connectorResponse.getBody());
-			int connectorId = connectorNode.path("id").asInt();  
-			logger.info("2. Create Connector. connectorId {}", connectorId);
-
-			// Create a Date instance
-			Date now = new Date();
-
-			// Convert Date to LocalDateTime
-			ZonedDateTime zdt = now.toInstant().atZone(ZoneId.systemDefault());
-			LocalDateTime localDateTime = zdt.toLocalDateTime();
-
-			Connector connector = new Connector();
-			connector.setUuid(uuid);
-			connector.setCreatedAt(localDateTime);
-			connector.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-			connector.setConnectorId(connectorId);
-			connector.setFileNames(file.getOriginalFilename());
-			connectorRepository.save(connector);
-
-			// 3. Create Credential
-			logger.info("3. Create Credential");
-			CreateCredentialRequest credentialRequest = new CreateCredentialRequest();
-			credentialRequest.setCredentialJson(new HashMap<>());
-			credentialRequest.setAdminPublic(true);
-
-			ResponseEntity<String> credentialResponse = createCredential(credentialRequest, fastapiusersauth);
-			if (!credentialResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(credentialResponse.getStatusCode()).body("Failed to create credential");
-			}
-			// Extract credential ID from credentialResponse
-			JsonNode credentialNode = objectMapper.readTree(credentialResponse.getBody());
-			int credentialId = credentialNode.path("id").asInt();  
-			logger.info("3. Create Credential. credentialId {}", credentialId);
-
-			// 4. Update Connector Credential
-			logger.info("4. Update Connector Credential");
-			UpdateConnectorCredentialRequest updateRequest = new UpdateConnectorCredentialRequest();
-			updateRequest.setConnectorId(connectorId);
-			updateRequest.setCredentialId(credentialId);
-			updateRequest.setName(uuid);
-			updateRequest.setPublic(true);
-
-			ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest, fastapiusersauth);
-			if (!updateResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(updateResponse.getStatusCode()).body("Failed to update connector credential");
-			}
-
-			// 5. Run Connector Once
-			logger.info("5. Run Connector Once");
-			RunConnectorOnceRequest runRequest = new RunConnectorOnceRequest();
-			runRequest.setConnectorId(connectorId);
-			List<Integer> credentialIds = new ArrayList<>();
-			credentialIds.add(credentialId);
-			runRequest.setCredentialIds(credentialIds);
-			runRequest.setFromBeginning(false);
-
-			ResponseEntity<String> runResponse = runConnectorOnce(runRequest, fastapiusersauth);
-			if (!runResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(runResponse.getStatusCode()).body("Failed to run connector");
-			}
-
-			// 6. Get Indexing Status		
-			logger.info("6. Get Indexing Status");
-			ResponseEntity<String> indexingResponse = getIndexingStatus(fastapiusersauth);
-			if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
-			}
-			// Extract CC Pair ID from indexingResponse
-			// Parse the JSON array from the response body
-			JsonNode indexingArray = objectMapper.readTree(indexingResponse.getBody());
-
-			// Initialize variable to store the found cc_pair_id
-			int ccPairId = -1; // Default to -1 or another sentinel value to indicate not found
-
-			// Iterate through each item in the array
-			for (JsonNode item : indexingArray) {
-				// Check if the name matches the given name
-				if (item.path("name").asText().equals(uuid)) {
-					// If a match is found, extract the cc_pair_id
-					ccPairId = item.path("cc_pair_id").asInt();
-					// Log the found ccPairId
-					logger.info("6. Get Indexing Status. ccPairId {}", ccPairId);
-					// Break out of the loop if you only expect one match
-					break;
-				}
-			}
-
-			// Check if the ccPairId was found
-			if (ccPairId == -1) {
-				// Handle the case where the given name was not found in the array
-				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Given name '" + uuid + "' not found in the indexing response.");
-			}
-
-			connector.setCcPairId(ccPairId);
-			connectorRepository.save(connector);
-
-			// 7. Update Document Set
-			logger.info("7. Update Document Set");
-			DocumentSet documentSetExample = new DocumentSet();
-			documentSetExample.setCreatedBy(username);
-			Optional<DocumentSet> documentSetOptional = documentSetRepository.findOne(Example.of(documentSetExample));
-
-			DocumentSetUpdateRequest documentSetUpdateRequest = new DocumentSetUpdateRequest();
-			documentSetUpdateRequest.setId(documentSetOptional.get().getDocumentSetId());
-			documentSetUpdateRequest.setDescription(documentSetOptional.get().getUuid());
-
-			List<Integer> ccPairIds = new ArrayList<>();
-			Connector connectorExample = new Connector();
-			connectorExample.setCreatedBy(username);
-			List<Connector> lstConnector = connectorRepository.findAll(Example.of(connectorExample));
-			for (Connector c : lstConnector) {
-				ccPairIds.add(c.getCcPairId());
-			}
-
-			documentSetUpdateRequest.setCcPairIds(ccPairIds);
-
-			ResponseEntity<?> responseEntity = updateDocumentSet(documentSetUpdateRequest, fastapiusersauth)
-			.flatMap(response -> {
-                try {
-                    // Assuming the response is the document set ID as a string
-                    // int documentSetId = Integer.parseInt(response);
-                    // logger.info("7. Update Document Set. documentSetId {}", documentSetId);
-                    // Since we're making it synchronous, return the OK status directly
-                    return Mono.just(ResponseEntity.ok(HttpStatus.OK));
-                } catch (NumberFormatException e) {
-                    logger.error("Failed to parse documentSetId from response", e);
-                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to run document"));
-                }
-            })
-            .block(); // This blocks until the operation is completed
-
-			// Handle the result synchronously
-			if (responseEntity != null && !responseEntity.getStatusCode().is2xxSuccessful()) {
-				logger.error("Failed to update document set");
-				return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to update document set");
-			} else if (responseEntity != null) {
-				logger.info("Successfully updated document set with ID: {}", responseEntity.getBody());
-			}
-
-			return ResponseEntity.status(HttpStatus.OK).body("Process uploadCombined completed successfully");
-		} else {
-			// 1. Upload the file
-			logger.info("1. Upload the file");
-			ResponseEntity<String> uploadResponse = uploadFile(file, fastapiusersauth);
-			if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(uploadResponse.getStatusCode()).body("Failed to upload file");
-			}
-			JsonNode uploadNode = objectMapper.readTree(uploadResponse.getBody());
-			String filePaths = uploadNode.get("file_paths").get(0).asText();
-			logger.info("1. Upload the file. filePaths {}", filePaths);
-
-			// 2. Create Connector
-			// Assuming filePaths is extracted correctly from the upload response
-			logger.info("2. Create Connector");
-			CreateConnectorRequest connectorRequest = new CreateConnectorRequest();
-			connectorRequest.setName("FileConnector-" + System.currentTimeMillis());
-			connectorRequest.setSource("file");
-			connectorRequest.setInputType("load_state");
-			ConnectorSpecificConfig connectorSpecificConfig = new ConnectorSpecificConfig();
-			List<String> fileLocations = new ArrayList<>();
-			fileLocations.add(filePaths);
-			connectorSpecificConfig.setFileLocations(fileLocations);
-			connectorRequest.setConnectorSpecificConfig(connectorSpecificConfig);
-			connectorRequest.setDisabled(false);
-			connectorRequest.setRefreshFreq(null);		
-
-			ResponseEntity<String> connectorResponse = createConnector(connectorRequest, fastapiusersauth);
-			if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to create connector");
-			}
-			// Extract connector ID from connectorResponse
-			JsonNode connectorNode = objectMapper.readTree(connectorResponse.getBody());
-			int connectorId = connectorNode.path("id").asInt();  
-			logger.info("2. Create Connector. connectorId {}", connectorId);
-
-			// Create a Date instance
-			Date now = new Date();
-
-			// Convert Date to LocalDateTime
-			ZonedDateTime zdt = now.toInstant().atZone(ZoneId.systemDefault());
-			LocalDateTime localDateTime = zdt.toLocalDateTime();
-
-			Connector connector = new Connector();
-			connector.setUuid(uuid);
-			connector.setCreatedAt(localDateTime);
-			connector.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-			connector.setConnectorId(connectorId);
-			connector.setFileNames(file.getOriginalFilename());
-			connectorRepository.save(connector);
-
-			// 3. Create Credential
-			logger.info("3. Create Credential");
-			CreateCredentialRequest credentialRequest = new CreateCredentialRequest();
-			credentialRequest.setCredentialJson(new HashMap<>());
-			credentialRequest.setAdminPublic(true);
-
-			ResponseEntity<String> credentialResponse = createCredential(credentialRequest, fastapiusersauth);
-			if (!credentialResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(credentialResponse.getStatusCode()).body("Failed to create credential");
-			}
-			// Extract credential ID from credentialResponse
-			JsonNode credentialNode = objectMapper.readTree(credentialResponse.getBody());
-			int credentialId = credentialNode.path("id").asInt();  
-			logger.info("3. Create Credential. credentialId {}", credentialId);
-
-			// 4. Update Connector Credential
-			logger.info("4. Update Connector Credential");
-			UpdateConnectorCredentialRequest updateRequest = new UpdateConnectorCredentialRequest();
-			updateRequest.setConnectorId(connectorId);
-			updateRequest.setCredentialId(credentialId);
-			updateRequest.setName(uuid);
-			updateRequest.setPublic(true);
-
-			ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest, fastapiusersauth);
-			if (!updateResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(updateResponse.getStatusCode()).body("Failed to update connector credential");
-			}
-
-			// 5. Run Connector Once
-			logger.info("5. Run Connector Once");
-			RunConnectorOnceRequest runRequest = new RunConnectorOnceRequest();
-			runRequest.setConnectorId(connectorId);
-			List<Integer> credentialIds = new ArrayList<>();
-			credentialIds.add(credentialId);
-			runRequest.setCredentialIds(credentialIds);
-			runRequest.setFromBeginning(false);
-
-			ResponseEntity<String> runResponse = runConnectorOnce(runRequest, fastapiusersauth);
-			if (!runResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(runResponse.getStatusCode()).body("Failed to run connector");
-			}
-
-			// 6. Get Indexing Status		
-			logger.info("6. Get Indexing Status");
-			ResponseEntity<String> indexingResponse = getIndexingStatus(fastapiusersauth);
-			if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
-			}
-			// Extract CC Pair ID from indexingResponse
-			// Parse the JSON array from the response body
-			JsonNode indexingArray = objectMapper.readTree(indexingResponse.getBody());
-
-			// Initialize variable to store the found cc_pair_id
-			int ccPairId = -1; // Default to -1 or another sentinel value to indicate not found
-
-			// Iterate through each item in the array
-			for (JsonNode item : indexingArray) {
-				// Check if the name matches the given name
-				if (item.path("name").asText().equals(uuid)) {
-					// If a match is found, extract the cc_pair_id
-					ccPairId = item.path("cc_pair_id").asInt();
-					// Log the found ccPairId
-					logger.info("6. Get Indexing Status. ccPairId {}", ccPairId);
-					// Break out of the loop if you only expect one match
-					break;
-				}
-			}
-
-			// Check if the ccPairId was found
-			if (ccPairId == -1) {
-				// Handle the case where the given name was not found in the array
-				return ResponseEntity.status(indexingResponse.getStatusCode()).body("Given name '" + uuid + "' not found in the indexing response.");
-			}
-
-			connector.setCcPairId(ccPairId);
-			connectorRepository.save(connector);
-
-			// 7. Create Document Set
-			logger.info("7. Create Document Set");
-			DocumentSetRequest documentRequest = new DocumentSetRequest();
-			documentRequest.setName(uuid);
-			documentRequest.setDescription(uuid);
-			List<Integer> ccPairIds = new ArrayList<>();
-			ccPairIds.add(ccPairId);
-			documentRequest.setCcPairIds(ccPairIds);
-
-			ResponseEntity<String> documentResponse = createDocumentSet(documentRequest, fastapiusersauth);
-			if (!documentResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(documentResponse.getStatusCode()).body("Failed to run document");
-			}
-			int documentSetId = Integer.parseInt(documentResponse.getBody());
-			logger.info("7. Create Document Set. documentSetId {}", documentSetId);
-
-			DocumentSet documentSet = new DocumentSet();
-			documentSet.setUuid(uuid);
-			documentSet.setCreatedAt(localDateTime);
-			documentSet.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-			documentSet.setDocumentSetId(documentSetId);
-			documentSet.setName(uuid);
-			documentSet.setDescription(uuid);
-			documentSetRepository.save(documentSet);
-
-			// 8. Create Default Prompt
-			logger.info("8. Create Default Prompt");
-			DefaultPromptRequest promptRequest = new DefaultPromptRequest();
-			promptRequest.setName("default-prompt__" + uuid);
-			promptRequest.setDescription("Default prompt for persona " + uuid);
-			promptRequest.setShared(true);
-			promptRequest.setSystemPrompt(systemPrompt);
-			promptRequest.setTaskPrompt(taskPrompt);
-			promptRequest.setIncludeCitations(true);		
-
-			ResponseEntity<String> promptResponse = createDefaultPrompt(promptRequest, fastapiusersauth);
-			if (!promptResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(promptResponse.getStatusCode()).body("Failed to run Create Default Prompt");
-			}
-			// Extract Prompt ID from promptResponse
-			JsonNode promptNode = objectMapper.readTree(promptResponse.getBody());
-			int promptId = promptNode.path("id").asInt();
-			logger.info("8. Create Default Prompt. promptId {}", promptId);
-
-			Prompt prompt = new Prompt();
-			prompt.setUuid(uuid);
-			prompt.setCreatedAt(localDateTime);
-			prompt.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-			prompt.setPromptId(promptId);
-			prompt.setName(promptRequest.getName());
-			prompt.setDescription(promptRequest.getDescription());
-			prompt.setSystemPrompt(promptRequest.getSystemPrompt());
-			prompt.setTaskPrompt(promptRequest.getTaskPrompt());
-			promptRepository.save(prompt);
-
-			// 9. Create Persona
-			logger.info("9. Create Persona");
-			PersonaRequest personaRequest = new PersonaRequest();
-			personaRequest.setName(uuid);
-			personaRequest.setDescription(uuid);
-			personaRequest.setIncludeCitations(false);
-			personaRequest.setShared(true);
-			personaRequest.setNumChunks(10);
-			personaRequest.setLlmRelevanceFilter(false);
-			personaRequest.setLlmFilterExtraction(false);
-			personaRequest.setRecencyBias("base_decay");		
-			List<Integer> promptIds = new ArrayList<>();
-			promptIds.add(promptId);
-			personaRequest.setPromptIds(promptIds);
-			List<Integer> documentSetIds = new ArrayList<>();
-			documentSetIds.add(documentSetId);
-			personaRequest.setDocumentSetIds(documentSetIds);
-
-			ResponseEntity<String> personaResponse = createPersona(personaRequest, fastapiusersauth);
-			if (!personaResponse.getStatusCode().is2xxSuccessful()) {
-				return ResponseEntity.status(personaResponse.getStatusCode()).body("Failed to run Create Persona");
-			}
-			// Extract Prompt ID from promptResponse
-			JsonNode personaNode = objectMapper.readTree(personaResponse.getBody());
-			int personaId = personaNode.path("id").asInt();
-			logger.info("9. Create Persona. personaId {}", personaId);
-
-			Persona persona = new Persona();
-			persona.setUuid(uuid);
-			persona.setCreatedAt(localDateTime);
-			persona.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-			persona.setPersonaId(personaId);
-			persona.setName(personaRequest.getName());
-			persona.setDescription(personaRequest.getDescription());
-			persona.setPromptId(promptId);
-			persona.setDocumentSetId(documentSetId);
-			personaRepository.save(persona);
-
-			return ResponseEntity.status(HttpStatus.OK).body("Process uploadCombined completed successfully");
-		}		
-	}
-
 	public ResponseEntity<String> getIndexingStatus(String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Accept", "application/json");
@@ -875,7 +450,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector/indexing-status?secondary_index=false", HttpMethod.GET, entity, String.class);
 	}
 
-	public ResponseEntity<String> uploadFile(@RequestParam("files") MultipartFile file, String fastapiusersauth) {
+	public ResponseEntity<String> uploadFile(MultipartFile file, String fastapiusersauth) {
 		// Check if the file is empty or not
 		if (file.isEmpty()) {
 			return new ResponseEntity<>("Empty file cannot be uploaded", HttpStatus.BAD_REQUEST);
@@ -922,7 +497,7 @@ public class UploadController {
 		return convFile;
 	}
 
-	public ResponseEntity<String> createConnector(@RequestBody CreateConnectorRequest createConnectorRequest, String fastapiusersauth) {
+	public ResponseEntity<String> createConnector(CreateConnectorRequest createConnectorRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
@@ -932,7 +507,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector", HttpMethod.POST, entity, String.class);
 	}
 
-	public ResponseEntity<String> createCredential(@RequestBody CreateCredentialRequest createCredentialRequest, String fastapiusersauth) {
+	public ResponseEntity<String> createCredential(CreateCredentialRequest createCredentialRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
@@ -942,7 +517,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/credential", HttpMethod.POST, entity, String.class);
 	}
 
-	public ResponseEntity<String> updateConnectorCredential(@RequestBody UpdateConnectorCredentialRequest updateConnectorCredentialRequest, String fastapiusersauth) {
+	public ResponseEntity<String> updateConnectorCredential(UpdateConnectorCredentialRequest updateConnectorCredentialRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
@@ -954,7 +529,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/connector/" + connectorId + "/credential/" + credentialId, HttpMethod.PUT, entity, String.class);
 	}
 
-	public ResponseEntity<String> runConnectorOnce(@RequestBody RunConnectorOnceRequest runOnceRequest, String fastapiusersauth) {
+	public ResponseEntity<String> runConnectorOnce(RunConnectorOnceRequest runOnceRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Accept", "application/json");
@@ -964,7 +539,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/connector/run-once", HttpMethod.POST, entity, String.class);
 	}
 
-	public ResponseEntity<String> createDocumentSet(@RequestBody DocumentSetRequest documentSetRequest, String fastapiusersauth) {
+	public ResponseEntity<String> createDocumentSet(DocumentSetRequest documentSetRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.setAccept(Collections.singletonList(MediaType.ALL));
@@ -975,7 +550,7 @@ public class UploadController {
 		return restTemplate.exchange(baseUrl + "/api/manage/admin/document-set", HttpMethod.POST, entity, String.class);
 	}
 
-    public Mono<String> updateDocumentSet(@RequestBody DocumentSetUpdateRequest documentSetUpdateRequest, String fastapiusersauth) {
+    public Mono<String> updateDocumentSet(DocumentSetUpdateRequest documentSetUpdateRequest, String fastapiusersauth) {
         return this.webClient.patch()
                 .uri("/api/manage/admin/document-set")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -986,7 +561,7 @@ public class UploadController {
                 .bodyToMono(String.class); // Convert the response body to String
     }
 
-	public ResponseEntity<String> createDefaultPrompt(@RequestBody DefaultPromptRequest defaultPromptRequest, String fastapiusersauth) {
+	public ResponseEntity<String> createDefaultPrompt(DefaultPromptRequest defaultPromptRequest, String fastapiusersauth) {
 		String url = "https://chitchato.danswer.ai/api/prompt";
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -1000,7 +575,7 @@ public class UploadController {
 		return response;
 	}
 
-	public ResponseEntity<String> createPersona(@RequestBody PersonaRequest personaRequest, String fastapiusersauth) {
+	public ResponseEntity<String> createPersona(PersonaRequest personaRequest, String fastapiusersauth) {
 		String url = "https://chitchato.danswer.ai/api/admin/persona";
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
