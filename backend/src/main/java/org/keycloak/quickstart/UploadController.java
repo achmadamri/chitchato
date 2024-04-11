@@ -56,6 +56,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Example;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -886,7 +887,21 @@ public class UploadController {
 		headers.set("cookie", "fastapiusersauth=" + fastapiusersauth);
 
 		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-		body.add("files", new FileSystemResource(convertMultiPartToFile(file)));
+		try {
+			body.add("files", new InputStreamResource(file.getInputStream()) {
+			    @Override
+			    public long contentLength() throws IOException {
+			        return file.getSize();
+			    }
+
+			    @Override
+			    public String getFilename() {
+			        return file.getOriginalFilename();
+			    }
+			});
+		} catch (IOException e) {
+			return new ResponseEntity<>("Failed to read file", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 
 		HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
