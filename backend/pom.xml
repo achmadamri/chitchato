@@ -24,7 +24,7 @@
         <relativePath>pom-parent.xml</relativePath>
     </parent>
 
-    <artifactId>spring-rest-authz-resource-server</artifactId>
+    <artifactId>backend</artifactId>
     <packaging>jar</packaging>
 
     <licenses>

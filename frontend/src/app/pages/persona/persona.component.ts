@@ -19,10 +19,12 @@ export class PersonaComponent implements OnInit {
   clicked = false;
   showList = true;
   showDetails = false;
+  personaUuid = '';
   showAdd = false;
   public getUserResponse: GetUserResponse
   public getPersonaListResponse: GetPersonaListResponse;
   public getPersonaResponse: GetPersonaResponse;
+  selectedFile: File;
 
   constructor(
     private userService: UserService,
@@ -61,6 +63,8 @@ export class PersonaComponent implements OnInit {
     this.showDetails = true;
     this.showAdd = false;
 
+    this.personaUuid = uuid;
+
     this.userService.getUser().subscribe(data => {
       this.getUserResponse = data;
       
@@ -85,6 +89,10 @@ export class PersonaComponent implements OnInit {
       }
     });    
   }
+  
+  onFileChanged(event) {
+    this.selectedFile = event.target.files[0];
+  }
 
   postDeleteDocument(connectorUuid: string) {
     this.clicked = true;
@@ -94,7 +102,40 @@ export class PersonaComponent implements OnInit {
 
       this.clicked = false;
       this.util.showNotification(2, 'bottom', 'center', 'Persona deleted');
-      this.getPersonaList();
+      
+      this.doShowDetails(this.personaUuid);
+    }, error => {
+      console.log(error);
+
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', error.error.message);
+      }
+    });
+  }
+
+  postUploadDocument() {
+    if (!this.selectedFile) {
+      this.util.showNotification(4, 'bottom', 'center', 'No file selected');
+      return;
+    }
+
+    this.clicked = true;
+
+    this.uploadService.postUploadDocument(this.personaUuid, this.selectedFile).subscribe(data => {
+      console.log(data);
+
+      this.clicked = false;
+      this.util.showNotification(2, 'bottom', 'center', 'Document uploaded');
+      
+      this.doShowDetails(this.personaUuid);
+
+      const input = document.getElementById('input-file') as HTMLInputElement;
+      input.value = null;
+
+      this.selectedFile = null;
     }, error => {
       console.log(error);
 

@@ -22,4 +22,19 @@ export class UploadService {
 
     return this.httpClient.post(`${this.apiUrl}/delete-document`, {}, { headers, params });
   }
+
+  postUploadDocument(personaUuid: string, selectedFile: File): Observable<any> {
+    console.log('postDeleteDocument selectedFile:', selectedFile);
+    const headers = new HttpHeaders()
+      ;
+
+    const params = new HttpParams()
+      .set('personaUuid', personaUuid)
+      ;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile, selectedFile.name);
+
+    return this.httpClient.post(`${this.apiUrl}/upload-document`, formData, { headers, params });
+  }
 }

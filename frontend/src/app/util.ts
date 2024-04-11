@@ -17,7 +17,7 @@ export class Util {
     
         },{
             type: type[color],
-            timer: 4000,
+            timer: 60000,
             placement: {
                 from: from,
                 align: align

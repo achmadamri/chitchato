@@ -191,11 +191,11 @@ public class UploadController {
 		// Delete connector from database
 		connectorRepository.delete(connector);		
 		
-		return ResponseEntity.ok("{\"message\":\"Process deleteDocument completed successfully\"}");
+		return ResponseEntity.ok("{\"message\":\"Process delete document completed successfully\"}");
 	}
 
-	@PostMapping("/add-document")
-	public ResponseEntity<?> addDocument(@RequestParam String personaUuid, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
+	@PostMapping("/upload-document")
+	public ResponseEntity<?> uploadDocument(@RequestParam String personaUuid, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
 		if (file.isEmpty()) {
 			return ResponseEntity.badRequest().body("File is empty");
 		}
@@ -403,7 +403,7 @@ public class UploadController {
 			logger.info("Successfully updated document set with ID: {}", responseEntity.getBody());
 		}
 
-		return ResponseEntity.status(HttpStatus.OK).body("Process addDocument completed successfully");
+		return ResponseEntity.ok("{\"message\":\"Process upload document completed successfully\"}");
 	}
 
 	public ResponseEntity<String> getCcPair(String ccPairId, String fastapiusersauth) {
