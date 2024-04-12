@@ -32,11 +32,13 @@ import java.util.UUID;
 
 import org.keycloak.quickstart.db.entity.Connector;
 import org.keycloak.quickstart.db.entity.DocumentSet;
+import org.keycloak.quickstart.db.entity.DocumentSetConnector;
 import org.keycloak.quickstart.db.entity.Persona;
 import org.keycloak.quickstart.db.entity.Prompt;
 import org.keycloak.quickstart.db.entity.User;
 import org.keycloak.quickstart.db.repository.ConfigRepository;
 import org.keycloak.quickstart.db.repository.ConnectorRepository;
+import org.keycloak.quickstart.db.repository.DocumentSetConnectorRepository;
 import org.keycloak.quickstart.db.repository.DocumentSetRepository;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
 import org.keycloak.quickstart.db.repository.PromptRepository;
@@ -108,6 +110,9 @@ public class UploadController {
 
 	@Autowired
 	private DocumentSetRepository documentSetRepository;
+
+	@Autowired
+	private DocumentSetConnectorRepository documentSetConnectorRepository;
 
 	@Autowired
 	private PromptRepository promptRepository;
@@ -194,8 +199,15 @@ public class UploadController {
 			return ResponseEntity.status(deletionResponse.getStatusCode()).body("Failed to delete attempt");
 		}
 
-		// Delete connector from database
+		// Delete Connector from database
 		connectorRepository.delete(connector);		
+
+		// Delete Document Set Connector from database
+		DocumentSetConnector documentSetConnectorExample = new DocumentSetConnector();
+		documentSetConnectorExample.setCreatedBy(username);
+		documentSetConnectorExample.setConnectorId(connector.getConnectorId());
+		DocumentSetConnector documentSetConnector = documentSetConnectorRepository.findOne(Example.of(documentSetConnectorExample)).orElse(null);
+		documentSetConnectorRepository.delete(documentSetConnector);
 		
 		return ResponseEntity.ok("{\"message\":\"Process delete document completed successfully\"}");
 	}
@@ -367,19 +379,36 @@ public class UploadController {
 
 		// 7. Update Document Set
 		logger.info("7. Update Document Set");
-		DocumentSet documentSetExample = new DocumentSet();
-		documentSetExample.setDocumentSetId(persona.getDocumentSetId());
-		documentSetExample.setCreatedBy(username);
-		Optional<DocumentSet> documentSetOptional = documentSetRepository.findOne(Example.of(documentSetExample));
+
+		// Load Document Set from database
+        DocumentSet documentSetExample = new DocumentSet();
+        documentSetExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+        documentSetExample.setDocumentSetId(persona.getDocumentSetId());
+        DocumentSet documentSet = documentSetRepository.findOne(Example.of(documentSetExample)).orElse(null);
+
+        // Load Document Set Connector from database
+        DocumentSetConnector documentSetConnectorExample = new DocumentSetConnector();
+        documentSetConnectorExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+        documentSetConnectorExample.setDocumentSetId(documentSet.getDocumentSetId());
+        List<DocumentSetConnector> lstDocumentSetConnector = documentSetConnectorRepository.findAll(Example.of(documentSetConnectorExample));
+
+        // Load Connector from database
+        List<Connector> lstConnector = null;
+        if (lstDocumentSetConnector != null && lstDocumentSetConnector.size() > 0) {
+            lstConnector = lstDocumentSetConnector.stream().map(documentSetConnector -> {
+                Connector connectorExample = new Connector();
+                connectorExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+                connectorExample.setConnectorId(documentSetConnector.getConnectorId());
+                return connectorRepository.findOne(Example.of(connectorExample)).orElse(null);
+            }).toList();
+        }
 
 		DocumentSetUpdateRequest documentSetUpdateRequest = new DocumentSetUpdateRequest();
-		documentSetUpdateRequest.setId(documentSetOptional.get().getDocumentSetId());
-		documentSetUpdateRequest.setDescription(documentSetOptional.get().getUuid());
+		documentSetUpdateRequest.setId(documentSet.getDocumentSetId());
+		documentSetUpdateRequest.setDescription(documentSet.getUuid());
 
 		List<Integer> ccPairIds = new ArrayList<>();
-		Connector connectorExample = new Connector();
-		connectorExample.setCreatedBy(username);
-		List<Connector> lstConnector = connectorRepository.findAll(Example.of(connectorExample));
+		ccPairIds.add(ccPairId);
 		for (Connector c : lstConnector) {
 			ccPairIds.add(c.getCcPairId());
 		}
@@ -406,6 +435,277 @@ public class UploadController {
 		} else if (responseEntity != null) {
 			logger.info("Successfully updated document set with ID: {}", responseEntity.getBody());
 		}
+
+		// Save Document Set Connector to database
+		DocumentSetConnector documentSetConnector = new DocumentSetConnector();
+		documentSetConnector.setUuid(uuid);
+		documentSetConnector.setCreatedAt(localDateTime);
+		documentSetConnector.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		documentSetConnector.setDocumentSetId(persona.getDocumentSetId());
+		documentSetConnector.setConnectorId(connectorId);		
+		documentSetConnectorRepository.save(documentSetConnector);
+
+		return ResponseEntity.ok("{\"message\":\"Process upload document completed successfully\"}");
+	}
+
+	@PostMapping("/add-persona")
+	public ResponseEntity<?> postAddPersona(@RequestParam String name, @RequestParam String description, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
+		if (file.isEmpty()) {
+			return ResponseEntity.badRequest().body("File is empty");
+		}
+
+		// Initialize username
+		String username = jwt.getClaimAsString("preferred_username");
+		logger.info("username: {}", username);
+
+		// Load user from database
+		User userExample = new User();
+		userExample.setUsername(username);
+		User user = userRepository.findOne(Example.of(userExample)).orElse(null);
+
+		// Initialize uuid
+		String uuid = UUID.randomUUID().toString();
+		logger.info("uuid: {}", uuid);
+
+		// Check max persona limit
+		Persona personaExampleCount = new Persona();
+		personaExampleCount.setCreatedBy(username);
+		if (personaRepository.count(Example.of(personaExampleCount)) >= user.getMaxPersona()) {
+			return ResponseEntity.status(500).body("Max persona limit");
+		}
+
+		// Initialize ObjectMapper for JSON parsing
+    	ObjectMapper objectMapper = new ObjectMapper();
+
+		// 1. Upload the file
+		logger.info("1. Upload the file");
+		ResponseEntity<String> uploadResponse = uploadFile(file, user.getFastapiusersauth());
+		if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(uploadResponse.getStatusCode()).body("Failed to upload file");
+		}
+		JsonNode uploadNode = objectMapper.readTree(uploadResponse.getBody());
+		String filePaths = uploadNode.get("file_paths").get(0).asText();
+		logger.info("1. Upload the file. filePaths {}", filePaths);
+
+		// 2. Create Connector
+		// Assuming filePaths is extracted correctly from the upload response
+		logger.info("2. Create Connector");
+		CreateConnectorRequest connectorRequest = new CreateConnectorRequest();
+		connectorRequest.setName("FileConnector-" + System.currentTimeMillis());
+		connectorRequest.setSource("file");
+		connectorRequest.setInputType("load_state");
+		ConnectorSpecificConfig connectorSpecificConfig = new ConnectorSpecificConfig();
+		List<String> fileLocations = new ArrayList<>();
+		fileLocations.add(filePaths);
+		connectorSpecificConfig.setFileLocations(fileLocations);
+		connectorRequest.setConnectorSpecificConfig(connectorSpecificConfig);
+		connectorRequest.setDisabled(false);
+		connectorRequest.setRefreshFreq(null);		
+
+		ResponseEntity<String> connectorResponse = createConnector(connectorRequest, user.getFastapiusersauth());
+		if (!connectorResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(connectorResponse.getStatusCode()).body("Failed to create connector");
+		}
+		// Extract connector ID from connectorResponse
+		JsonNode connectorNode = objectMapper.readTree(connectorResponse.getBody());
+		int connectorId = connectorNode.path("id").asInt();  
+		logger.info("2. Create Connector. connectorId {}", connectorId);
+
+		// Create a Date instance
+		Date now = new Date();
+
+		// Convert Date to LocalDateTime
+		ZonedDateTime zdt = now.toInstant().atZone(ZoneId.systemDefault());
+		LocalDateTime localDateTime = zdt.toLocalDateTime();
+
+		Connector connector = new Connector();
+		connector.setUuid(uuid);
+		connector.setCreatedAt(localDateTime);
+		connector.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		connector.setConnectorId(connectorId);
+		connector.setFileNames(file.getOriginalFilename());
+		connectorRepository.save(connector);
+
+		// 3. Create Credential
+		logger.info("3. Create Credential");
+		CreateCredentialRequest credentialRequest = new CreateCredentialRequest();
+		credentialRequest.setCredentialJson(new HashMap<>());
+		credentialRequest.setAdminPublic(true);
+
+		ResponseEntity<String> credentialResponse = createCredential(credentialRequest, user.getFastapiusersauth());
+		if (!credentialResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(credentialResponse.getStatusCode()).body("Failed to create credential");
+		}
+		// Extract credential ID from credentialResponse
+		JsonNode credentialNode = objectMapper.readTree(credentialResponse.getBody());
+		int credentialId = credentialNode.path("id").asInt();  
+		logger.info("3. Create Credential. credentialId {}", credentialId);
+
+		// 4. Update Connector Credential
+		logger.info("4. Update Connector Credential");
+		UpdateConnectorCredentialRequest updateRequest = new UpdateConnectorCredentialRequest();
+		updateRequest.setConnectorId(connectorId);
+		updateRequest.setCredentialId(credentialId);
+		updateRequest.setName(uuid);
+		updateRequest.setPublic(true);
+
+		ResponseEntity<String> updateResponse = updateConnectorCredential(updateRequest, user.getFastapiusersauth());
+		if (!updateResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(updateResponse.getStatusCode()).body("Failed to update connector credential");
+		}
+
+		// 5. Run Connector Once
+		logger.info("5. Run Connector Once");
+		RunConnectorOnceRequest runRequest = new RunConnectorOnceRequest();
+		runRequest.setConnectorId(connectorId);
+		List<Integer> credentialIds = new ArrayList<>();
+		credentialIds.add(credentialId);
+		runRequest.setCredentialIds(credentialIds);
+		runRequest.setFromBeginning(false);
+
+		ResponseEntity<String> runResponse = runConnectorOnce(runRequest, user.getFastapiusersauth());
+		if (!runResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(runResponse.getStatusCode()).body("Failed to run connector");
+		}
+
+		// 6. Get Indexing Status		
+		logger.info("6. Get Indexing Status");
+		ResponseEntity<String> indexingResponse = getIndexingStatus(user.getFastapiusersauth());
+		if (!indexingResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(indexingResponse.getStatusCode()).body("Failed to run indexing");
+		}
+		// Extract CC Pair ID from indexingResponse
+		// Parse the JSON array from the response body
+		JsonNode indexingArray = objectMapper.readTree(indexingResponse.getBody());
+
+		// Initialize variable to store the found cc_pair_id
+		int ccPairId = -1; // Default to -1 or another sentinel value to indicate not found
+
+		// Iterate through each item in the array
+		for (JsonNode item : indexingArray) {
+			// Check if the name matches the given name
+			if (item.path("name").asText().equals(uuid)) {
+				// If a match is found, extract the cc_pair_id
+				ccPairId = item.path("cc_pair_id").asInt();
+				// Log the found ccPairId
+				logger.info("6. Get Indexing Status. ccPairId {}", ccPairId);
+				// Break out of the loop if you only expect one match
+				break;
+			}
+		}
+
+		// Check if the ccPairId was found
+		if (ccPairId == -1) {
+			// Handle the case where the given name was not found in the array
+			return ResponseEntity.status(indexingResponse.getStatusCode()).body("Given name '" + uuid + "' not found in the indexing response.");
+		}
+
+		connector.setCcPairId(ccPairId);
+		connectorRepository.save(connector);
+
+		// 7. Create Document Set
+		logger.info("7. Create Document Set");
+		DocumentSetRequest documentRequest = new DocumentSetRequest();
+		documentRequest.setName(uuid);
+		documentRequest.setDescription(uuid);
+		List<Integer> ccPairIds = new ArrayList<>();
+		ccPairIds.add(ccPairId);
+		documentRequest.setCcPairIds(ccPairIds);
+
+		ResponseEntity<String> documentResponse = createDocumentSet(documentRequest, user.getFastapiusersauth());
+		if (!documentResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(documentResponse.getStatusCode()).body("Failed to run document");
+		}
+		int documentSetId = Integer.parseInt(documentResponse.getBody());
+		logger.info("7. Create Document Set. documentSetId {}", documentSetId);
+
+
+		// Save Document Set to database
+		DocumentSet documentSet = new DocumentSet();
+		documentSet.setUuid(uuid);
+		documentSet.setCreatedAt(localDateTime);
+		documentSet.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		documentSet.setDocumentSetId(documentSetId);
+		documentSet.setName(uuid);
+		documentSet.setDescription(uuid);
+		documentSetRepository.save(documentSet);
+
+		// Save Document Set Connector to database
+		DocumentSetConnector documentSetConnector = new DocumentSetConnector();
+		documentSetConnector.setUuid(uuid);
+		documentSetConnector.setCreatedAt(localDateTime);
+		documentSetConnector.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		documentSetConnector.setDocumentSetId(documentSetId);
+		documentSetConnector.setConnectorId(connectorId);
+		documentSetConnectorRepository.save(documentSetConnector);
+
+		// 8. Create Default Prompt
+		logger.info("8. Create Default Prompt");
+		DefaultPromptRequest promptRequest = new DefaultPromptRequest();
+		promptRequest.setName("default-prompt__" + uuid);
+		promptRequest.setDescription("Default prompt for persona " + uuid);
+		promptRequest.setShared(true);
+		promptRequest.setSystemPrompt(systemPrompt);
+		promptRequest.setTaskPrompt(taskPrompt);
+		promptRequest.setIncludeCitations(true);		
+
+		ResponseEntity<String> promptResponse = createDefaultPrompt(promptRequest, user.getFastapiusersauth());
+		if (!promptResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(promptResponse.getStatusCode()).body("Failed to run Create Default Prompt");
+		}
+		// Extract Prompt ID from promptResponse
+		JsonNode promptNode = objectMapper.readTree(promptResponse.getBody());
+		int promptId = promptNode.path("id").asInt();
+		logger.info("8. Create Default Prompt. promptId {}", promptId);
+
+		Prompt prompt = new Prompt();
+		prompt.setUuid(uuid);
+		prompt.setCreatedAt(localDateTime);
+		prompt.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		prompt.setPromptId(promptId);
+		prompt.setName(promptRequest.getName());
+		prompt.setDescription(promptRequest.getDescription());
+		prompt.setSystemPrompt(promptRequest.getSystemPrompt());
+		prompt.setTaskPrompt(promptRequest.getTaskPrompt());
+		promptRepository.save(prompt);
+
+		// 9. Create Persona
+		logger.info("9. Create Persona");
+		PersonaRequest personaRequest = new PersonaRequest();
+		personaRequest.setName(name);
+		personaRequest.setDescription(description);
+		personaRequest.setIncludeCitations(false);
+		personaRequest.setShared(true);
+		personaRequest.setNumChunks(10);
+		personaRequest.setLlmRelevanceFilter(false);
+		personaRequest.setLlmFilterExtraction(false);
+		personaRequest.setRecencyBias("base_decay");		
+		List<Integer> promptIds = new ArrayList<>();
+		promptIds.add(promptId);
+		personaRequest.setPromptIds(promptIds);
+		List<Integer> documentSetIds = new ArrayList<>();
+		documentSetIds.add(documentSetId);
+		personaRequest.setDocumentSetIds(documentSetIds);
+
+		ResponseEntity<String> personaResponse = createPersona(personaRequest, user.getFastapiusersauth());
+		if (!personaResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(personaResponse.getStatusCode()).body("Failed to run Create Persona");
+		}
+		// Extract Prompt ID from promptResponse
+		JsonNode personaNode = objectMapper.readTree(personaResponse.getBody());
+		int personaId = personaNode.path("id").asInt();
+		logger.info("9. Create Persona. personaId {}", personaId);
+
+		Persona persona = new Persona();
+		persona.setUuid(uuid);
+		persona.setCreatedAt(localDateTime);
+		persona.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		persona.setPersonaId(personaId);
+		persona.setName(personaRequest.getName());
+		persona.setDescription(personaRequest.getDescription());
+		persona.setPromptId(promptId);
+		persona.setDocumentSetId(documentSetId);
+		personaRepository.save(persona);
 
 		return ResponseEntity.ok("{\"message\":\"Process upload document completed successfully\"}");
 	}

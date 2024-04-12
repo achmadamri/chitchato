@@ -18,10 +18,14 @@ package org.keycloak.quickstart;
 import java.util.List;
 
 import org.keycloak.quickstart.db.entity.Connector;
+import org.keycloak.quickstart.db.entity.DocumentSet;
+import org.keycloak.quickstart.db.entity.DocumentSetConnector;
 import org.keycloak.quickstart.db.entity.Persona;
 import org.keycloak.quickstart.db.entity.Prompt;
 import org.keycloak.quickstart.db.entity.User;
 import org.keycloak.quickstart.db.repository.ConnectorRepository;
+import org.keycloak.quickstart.db.repository.DocumentSetConnectorRepository;
+import org.keycloak.quickstart.db.repository.DocumentSetRepository;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
 import org.keycloak.quickstart.db.repository.PromptRepository;
 import org.keycloak.quickstart.db.repository.UserRepository;
@@ -68,6 +72,12 @@ public class PersonaController {
 	private PromptRepository promptRepository;
 
 	@Autowired
+	private DocumentSetRepository documentSetRepository;
+
+	@Autowired
+	private DocumentSetConnectorRepository documentSetConnectorRepository;
+
+	@Autowired
 	private ConnectorRepository connectorRepository;
 
 	@Autowired
@@ -95,7 +105,7 @@ public class PersonaController {
     }
 
 	@GetMapping("/persona")
-    public ResponseEntity<GetPersonaResponse> getPersona(@AuthenticationPrincipal Jwt jwt, @RequestParam String uuid) {
+    public ResponseEntity<GetPersonaResponse> getPersona(@RequestParam String uuid, @AuthenticationPrincipal Jwt jwt) {
         GetPersonaResponse response = new GetPersonaResponse();
 
         // Load Persona from database
@@ -110,10 +120,28 @@ public class PersonaController {
         promptExample.setPromptId(persona.getPromptId());
         Prompt prompt = promptRepository.findOne(Example.of(promptExample)).orElse(null);
 
+        // Load Document Set from database
+        DocumentSet documentSetExample = new DocumentSet();
+        documentSetExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+        documentSetExample.setDocumentSetId(persona.getDocumentSetId());
+        DocumentSet documentSet = documentSetRepository.findOne(Example.of(documentSetExample)).orElse(null);
+
+        // Load Document Set Connector from database
+        DocumentSetConnector documentSetConnectorExample = new DocumentSetConnector();
+        documentSetConnectorExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+        documentSetConnectorExample.setDocumentSetId(documentSet.getDocumentSetId());
+        List<DocumentSetConnector> lstDocumentSetConnector = documentSetConnectorRepository.findAll(Example.of(documentSetConnectorExample));
+
         // Load Connector from database
-        Connector connectorExample = new Connector();
-        connectorExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-        List<Connector> lstConnector = connectorRepository.findAll(Example.of(connectorExample));
+        List<Connector> lstConnector = null;
+        if (lstDocumentSetConnector != null && lstDocumentSetConnector.size() > 0) {
+            lstConnector = lstDocumentSetConnector.stream().map(documentSetConnector -> {
+                Connector connectorExample = new Connector();
+                connectorExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+                connectorExample.setConnectorId(documentSetConnector.getConnectorId());
+                return connectorRepository.findOne(Example.of(connectorExample)).orElse(null);
+            }).toList();
+        }
 
         response.setPersona(persona);
         response.setPrompt(prompt);

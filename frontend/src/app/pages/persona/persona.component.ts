@@ -4,6 +4,7 @@ import { GetPersonaResponse } from 'src/app/services/getpersonaresponse';
 import { GetUserResponse } from 'src/app/services/getuserresponse';
 import { Persona } from 'src/app/services/persona';
 import { PersonaService } from 'src/app/services/personaservice';
+import { PostAddPersonaRequest } from 'src/app/services/postaddpersonarequest';
 import { PostUpdatePersonaRequest } from 'src/app/services/postupdatepersonarequest';
 import { UploadService } from 'src/app/services/uploadservice';
 import { UserService } from 'src/app/services/userservice';
@@ -26,11 +27,13 @@ export class PersonaComponent implements OnInit {
   systemPrompt = '';
   taskPrompt = '';  
   showAdd = false;
-  public getUserResponse: GetUserResponse
+  public getUserResponse: GetUserResponse;
   public getPersonaListResponse: GetPersonaListResponse;
   public getPersonaResponse: GetPersonaResponse;
+  public postAddPersonaRequest: PostAddPersonaRequest = new PostAddPersonaRequest();
   public postUpdatePersonaRequest: PostUpdatePersonaRequest = new PostUpdatePersonaRequest();
-  selectedFile: File;
+  selectedFileAdd: File;
+  selectedFileUpdate: File;
 
   constructor(
     private userService: UserService,
@@ -102,8 +105,12 @@ export class PersonaComponent implements OnInit {
     });    
   }
   
-  onFileChanged(event) {
-    this.selectedFile = event.target.files[0];
+  onFileChangedAdd(event) {
+    this.selectedFileAdd = event.target.files[0];
+  }
+  
+  onFileChangedUpdate(event) {
+    this.selectedFileUpdate = event.target.files[0];
   }
 
   postUpdatePersona() {
@@ -137,7 +144,7 @@ export class PersonaComponent implements OnInit {
       console.log(data);
 
       this.clicked = false;
-      this.util.showNotification(2, 'bottom', 'center', 'Persona deleted');
+      this.util.showNotification(2, 'bottom', 'center', 'Document deleted');
       
       this.doShowDetails(this.personaUuid);
     }, error => {
@@ -153,14 +160,14 @@ export class PersonaComponent implements OnInit {
   }
 
   postUploadDocument() {
-    if (!this.selectedFile) {
+    if (!this.selectedFileUpdate) {
       this.util.showNotification(4, 'bottom', 'center', 'No file selected');
       return;
     }
 
     this.clicked = true;
 
-    this.uploadService.postUploadDocument(this.personaUuid, this.selectedFile).subscribe(data => {
+    this.uploadService.postUploadDocument(this.personaUuid, this.selectedFileUpdate).subscribe(data => {
       console.log(data);
 
       this.clicked = false;
@@ -168,10 +175,42 @@ export class PersonaComponent implements OnInit {
       
       this.doShowDetails(this.personaUuid);
 
-      const input = document.getElementById('input-file') as HTMLInputElement;
+      const input = document.getElementById('input-file-update') as HTMLInputElement;
       input.value = null;
 
-      this.selectedFile = null;
+      this.selectedFileUpdate = null;
+    }, error => {
+      console.log(error);
+
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', error.error.message);
+      }
+    });
+  }
+
+  postAddPersona() {
+    if (!this.selectedFileAdd) {
+      this.util.showNotification(4, 'bottom', 'center', 'No file selected');
+      return;
+    }
+
+    this.clicked = true;
+
+    this.uploadService.postAddPersona(this.postAddPersonaRequest.name, this.postAddPersonaRequest.description, this.selectedFileAdd).subscribe(data => {
+      console.log(data);
+
+      this.clicked = false;
+      this.util.showNotification(2, 'bottom', 'center', 'Persona added');
+      
+      this.doShowList(null);
+
+      const input = document.getElementById('input-file-add') as HTMLInputElement;
+      input.value = null;
+
+      this.selectedFileAdd = null;
     }, error => {
       console.log(error);
 

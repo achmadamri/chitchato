@@ -37,4 +37,20 @@ export class UploadService {
 
     return this.httpClient.post(`${this.apiUrl}/upload-document`, formData, { headers, params });
   }
+
+  postAddPersona(name: string, description: string, selectedFile: File): Observable<any> {
+    console.log('postDeleteDocument selectedFile:', selectedFile);
+    const headers = new HttpHeaders()
+      ;
+
+    const params = new HttpParams()
+      .set('name', name)
+      .set('description', description)
+      ;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile, selectedFile.name);
+
+    return this.httpClient.post(`${this.apiUrl}/add-persona`, formData, { headers, params });
+  }
 }
