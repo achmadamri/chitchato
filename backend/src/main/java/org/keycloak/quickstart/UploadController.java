@@ -245,10 +245,11 @@ public class UploadController {
     	ObjectMapper objectMapper = new ObjectMapper();
 
 		// If connector count is more than maxConnector
-		Connector connectorExampleMaxConnector = new Connector();
-		connectorExampleMaxConnector.setCreatedBy(username);
-		if (connectorRepository.count(Example.of(connectorExampleMaxConnector)) >= user.getMaxConnector()) {
-			return ResponseEntity.status(500).body("Max connector limit");
+		DocumentSetConnector documentSetConnectorExampleCount = new DocumentSetConnector();
+		documentSetConnectorExampleCount.setCreatedBy(username);
+		documentSetConnectorExampleCount.setDocumentSetId(persona.getDocumentSetId());
+		if (documentSetConnectorRepository.count(Example.of(documentSetConnectorExampleCount)) >= user.getMaxConnector()) {
+			return ResponseEntity.status(500).body("{\"message\":\"Max connector limit\"}");
 		}
 
 		// 1. Upload the file
@@ -409,8 +410,10 @@ public class UploadController {
 
 		List<Integer> ccPairIds = new ArrayList<>();
 		ccPairIds.add(ccPairId);
-		for (Connector c : lstConnector) {
-			ccPairIds.add(c.getCcPairId());
+		if (lstConnector != null) {
+			for (Connector c : lstConnector) {
+				ccPairIds.add(c.getCcPairId());
+			}
 		}
 
 		documentSetUpdateRequest.setCcPairIds(ccPairIds);
