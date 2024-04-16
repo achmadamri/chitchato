@@ -1,18 +1,18 @@
 package com.api.cct.backend.controller;
 
 public class SendRequest {
-    private String no;
+    private String sender;
 
     private String message;
 
     private String device;
 
-    public String getNo() {
-        return no;
+    public String getSender() {
+        return sender;
     }
 
-    public void setNo(String no) {
-        this.no = no;
+    public void setSender(String sender) {
+        this.sender = sender;
     }
 
     public String getMessage() {
@@ -29,5 +29,5 @@ public class SendRequest {
 
     public void setDevice(String device) {
         this.device = device;
-    }    
+    }
 }

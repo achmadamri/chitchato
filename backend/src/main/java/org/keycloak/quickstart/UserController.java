@@ -56,7 +56,6 @@ public class UserController {
         if (user.isPresent()) {
             response.setUuid(user.get().getUuid());
             response.setUsername(user.get().getUsername());
-            response.setDevice(user.get().getDevice());
             response.setMaxConnector(user.get().getMaxConnector());
             response.setMaxPersona(user.get().getMaxPersona());
         }

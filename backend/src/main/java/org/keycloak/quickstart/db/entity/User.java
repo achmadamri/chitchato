@@ -28,11 +28,11 @@ public class User {
 
     private String usernameDanswer;
 
-    private String fastapiusersauth;
-
-    private String device;
-
     private Integer maxConnector;
 
     private Integer maxPersona;
+
+    private String usernameFonnte;
+
+    private String fastapiusersauth;
 }

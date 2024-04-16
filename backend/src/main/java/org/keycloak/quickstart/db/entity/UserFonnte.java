@@ -9,10 +9,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "persona")
+@Table(name = "user_fonnte")
 @Setter
 @Getter
-public class Persona {
+public class UserFonnte {
     @Id
     private String uuid;
 
@@ -24,17 +24,9 @@ public class Persona {
 
     private String updatedBy;
 
-    private Integer personaId;
+    private String username;
 
-    private String name;
+    private String password;
 
-    private String description;
-
-    private Integer promptId;
-
-    private Integer documentSetId;
-
-    private String number;
-
-    private String numberToken;
+    private String usernameToken;
 }

@@ -38,7 +38,7 @@ export class UploadService {
     return this.httpClient.post(`${this.apiUrl}/upload-document`, formData, { headers, params });
   }
 
-  postAddPersona(name: string, description: string, selectedFile: File): Observable<any> {
+  postAddPersona(name: string, description: string, number: string, selectedFile: File): Observable<any> {
     console.log('postDeleteDocument selectedFile:', selectedFile);
     const headers = new HttpHeaders()
       ;
@@ -46,6 +46,7 @@ export class UploadService {
     const params = new HttpParams()
       .set('name', name)
       .set('description', description)
+      .set('number', number)
       ;
 
     const formData = new FormData();

@@ -9,4 +9,5 @@ export class Persona {
     description: string;
     promptId: number;
     documentSetId: number;
+    number: string;
 }

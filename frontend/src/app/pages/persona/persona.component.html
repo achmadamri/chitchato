@@ -87,7 +87,15 @@
                 <div class="col-lg-12">
                   <div class="form-group">
                     <label class="form-control-label" for="input-name">Name</label>
-                    <input type="text" id="input-name" class="form-control form-control-alternative" placeholder="" [(ngModel)]="postAddPersonaRequest.name" name="name">
+                    <input type="text" id="input-name" class="form-control form-control-alternative" placeholder="persona name" [(ngModel)]="postAddPersonaRequest.name" name="name">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-lg-12">
+                  <div class="form-group">
+                    <label class="form-control-label" for="input-name">Number</label>
+                    <input type="text" id="input-name" class="form-control form-control-alternative" placeholder="6281234567890" [(ngModel)]="postAddPersonaRequest.number" name="number">
                   </div>
                 </div>
               </div>
@@ -187,7 +195,6 @@
               </div>              
             </div>
             <div class="text-right">
-              <button type="button" class="btn btn-primary" (click)="doShowList(null)" [disabled]="clicked">Back</button>
               <button type="button" class="btn btn-primary" (click)="postUpdatePersona()" [disabled]="clicked">Update</button>
             </div>
           </form>          
@@ -257,6 +264,35 @@
             </div>
           </form>          
         </div>       
+      </div>
+      <div class="card shadow">
+        <div class="card-header border-0">
+          <div class="row align-items-center">
+            <div class="col-8">
+              <h3 class="mb-0">Device</h3>
+            </div>
+            <div class="col-4 text-right">
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <form>
+            <div class="pl-lg-4">
+              <div class="row">
+                <div class="col-lg-12">
+                  <div class="form-group">
+                    <label class="form-control-label" for="input-name">Number</label>
+                    <input type="text" id="input-name" class="form-control form-control-alternative" placeholder="" [(ngModel)]="getPersonaResponse.persona.number" name="number" readonly>
+                  </div>
+                </div>
+              </div>        
+            </div>
+            <div class="text-right">
+              <button type="button" class="btn btn-primary" (click)="doShowList(null)" [disabled]="clicked">Back</button>
+              <button type="button" class="btn btn-primary" (click)="postUpdatePersona()" [disabled]="clicked">Connect</button>
+            </div>
+          </form>          
+        </div>
       </div>
     </div>
   </div>

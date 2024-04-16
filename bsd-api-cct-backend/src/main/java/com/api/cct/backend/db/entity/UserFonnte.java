@@ -7,8 +7,8 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "user")
-public class User {
+@Table(name = "user_fonnte")
+public class UserFonnte {
     @Id
     private String uuid;
 
@@ -19,14 +19,12 @@ public class User {
     private LocalDateTime updateAt;
 
     private String updatedBy;
-    
+
     private String username;
 
-    private String usernameDanswer;
+    private String password;
 
-    private String usernameFonnte;
-
-    private String fastapiusersauth;
+    private String usernameToken;
 
     public String getUuid() {
         return uuid;
@@ -56,7 +54,7 @@ public class User {
         return updateAt;
     }
 
-    public void setUpdateAt(LocalDateTime updateAt) {
+    public void setUpdatedAt(LocalDateTime updateAt) {
         this.updateAt = updateAt;
     }
 
@@ -76,27 +74,19 @@ public class User {
         this.username = username;
     }
 
-    public String getUsernameDanswer() {
-        return usernameDanswer;
+    public String getPassword() {
+        return password;
     }
 
-    public void setUsernameDanswer(String usernameDanswer) {
-        this.usernameDanswer = usernameDanswer;
+    public void setPassword(String password) {
+        this.password = password;
     }
 
-    public String getUsernameFonnte() {
-        return usernameFonnte;
+    public String getUsernameToken() {
+        return usernameToken;
     }
 
-    public void setUsernameFonnte(String usernameFonnte) {
-        this.usernameFonnte = usernameFonnte;
-    }
-
-    public String getFastapiusersauth() {
-        return fastapiusersauth;
-    }
-
-    public void setFastapiusersauth(String fastapiusersauth) {
-        this.fastapiusersauth = fastapiusersauth;
+    public void setUsernameToken(String usernameToken) {
+        this.usernameToken = usernameToken;
     }
 }

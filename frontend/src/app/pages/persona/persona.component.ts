@@ -81,7 +81,7 @@ export class PersonaComponent implements OnInit {
         this.getPersonaResponse = data;
 
         this.postUpdatePersonaRequest.name = this.getPersonaResponse.persona.name;
-        this.postUpdatePersonaRequest.description = this.getPersonaResponse.persona.description;
+        this.postUpdatePersonaRequest.description = this.getPersonaResponse.persona.description;        
         this.postUpdatePersonaRequest.systemPrompt = this.getPersonaResponse.prompt.systemPrompt;
         this.postUpdatePersonaRequest.taskPrompt = this.getPersonaResponse.prompt.taskPrompt;
 
@@ -114,6 +114,26 @@ export class PersonaComponent implements OnInit {
   }
 
   postUpdatePersona() {
+    if (!this.postUpdatePersonaRequest.name) {
+      this.util.showNotification(4, 'bottom', 'center', 'Name is required');
+      return;
+    }
+
+    if (!this.postUpdatePersonaRequest.description) {
+      this.util.showNotification(4, 'bottom', 'center', 'Description is required');
+      return;
+    }
+
+    if (!this.postUpdatePersonaRequest.systemPrompt) {
+      this.util.showNotification(4, 'bottom', 'center', 'System prompt is required');
+      return;
+    }
+
+    if (!this.postUpdatePersonaRequest.taskPrompt) {
+      this.util.showNotification(4, 'bottom', 'center', 'Task prompt is required');
+      return;
+    }
+
     this.clicked = true;
 
     this.postUpdatePersonaRequest.personaUuid = this.personaUuid;
@@ -197,9 +217,24 @@ export class PersonaComponent implements OnInit {
       return;
     }
 
+    if (!this.postAddPersonaRequest.name) {
+      this.util.showNotification(4, 'bottom', 'center', 'Name is required');
+      return;
+    }
+
+    if (!this.postAddPersonaRequest.number) {
+      this.util.showNotification(4, 'bottom', 'center', 'Number is required');
+      return;
+    }
+
+    if (!this.postAddPersonaRequest.description) {
+      this.util.showNotification(4, 'bottom', 'center', 'Description is required');
+      return;
+    }
+
     this.clicked = true;
 
-    this.uploadService.postAddPersona(this.postAddPersonaRequest.name, this.postAddPersonaRequest.description, this.selectedFileAdd).subscribe(data => {
+    this.uploadService.postAddPersona(this.postAddPersonaRequest.name, this.postAddPersonaRequest.description, this.postAddPersonaRequest.number, this.selectedFileAdd).subscribe(data => {
       console.log(data);
 
       this.clicked = false;
@@ -232,22 +267,6 @@ export class PersonaComponent implements OnInit {
       } else {        
         this.clicked = false;
         this.util.showNotification(4, 'bottom', 'center', 'Error getting persona list');
-      }
-    });
-  }
-
-  update(uuid: string) {
-    this.clicked = true;
-    
-    this.personaService.getPersona('b7c00e22-30f2-4409-88de-ac779112f726').subscribe(data => {
-      this.getPersonaResponse = data;
-      this.clicked = false;
-    }, error => {
-      if (error.status === 403) {
-        window.location.href = '/';        
-      } else {        
-        this.clicked = false;
-        this.util.showNotification(4, 'bottom', 'center', 'Error updating persona');
       }
     });
   }

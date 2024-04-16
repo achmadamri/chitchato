@@ -104,26 +104,22 @@ public class ChatController {
 		// Initialize ObjectMapper for JSON parsing
     	ObjectMapper objectMapper = new ObjectMapper();
 
-		// Initialize username
-		// String username = jwt.getClaimAsString("preferred_username");
-		User userExample = new User();
-		userExample.setDevice(sendRequest.getDevice());
-		Optional<User> userOptional = userRepository.findOne(Example.of(userExample));
-		String username = userOptional.get().getUsername();
-		logger.info("username: {}", username);
-
-		// Initialize fastapiusersauth
-		String fastapiusersauth = userRepository.findByUsername(username).get().getFastapiusersauth();
-
-		// Check is there any Persona exist with this user
+		// Check is there any Persona exist with this device
 		Persona personaExample = new Persona();
-		personaExample.setCreatedBy(username);
+		personaExample.setNumber(sendRequest.getDevice());
 		Optional<Persona> personaOptional = personaRepository.findOne(Example.of(personaExample));
 		if (personaOptional.isPresent()) {
+			// Initialize username			
+			String username = personaOptional.get().getCreatedBy();
+			logger.info("username: {}", username);
+
+			// Initialize fastapiusersauth
+			String fastapiusersauth = userRepository.findByUsername(username).get().getFastapiusersauth();
+
 			// Check number is not exist
 			UserNumber userNumberExample = new UserNumber();			
 			userNumberExample.setCreatedBy(username);
-			userNumberExample.setNo(sendRequest.getNo()); // Format Example : 6281380782318
+			userNumberExample.setNo(sendRequest.getSender()); // Format Example : 6281380782318
 			Optional<UserNumber> userNumberOptional = userNumberRepository.findOne(Example.of(userNumberExample));
 
 			if (!userNumberOptional.isPresent()) {
@@ -152,7 +148,7 @@ public class ChatController {
 				userNumber.setUuid(UUID.randomUUID().toString());
 				userNumber.setCreatedBy(username);
 				userNumber.setCreatedAt(localDateTime);
-				userNumber.setNo(sendRequest.getNo());
+				userNumber.setNo(sendRequest.getSender());
 				userNumber.setChatSessionId(chatSessionId);
 				userNumberRepository.save(userNumber);
 
@@ -192,7 +188,7 @@ public class ChatController {
 				userChat.setUuid(UUID.randomUUID().toString());
 				userChat.setCreatedBy(username);
 				userChat.setCreatedAt(localDateTime);
-				userChat.setUserNumber(sendRequest.getNo());
+				userChat.setUserNumber(sendRequest.getSender());
 				userChat.setMessageIn(sendRequest.getMessage());
 				userChat.setMessageOut(message);
 				userChat.setMessageId(messageId);
@@ -215,7 +211,7 @@ public class ChatController {
 
 				// 2. Send Message
 				logger.info("2. Send Message");
-				UserChat userChatLast = userChatRepository.findOneByCreatedByAndUserNumberOrderByMessageIdDesc(username, sendRequest.getNo()).get(0);
+				UserChat userChatLast = userChatRepository.findOneByCreatedByAndUserNumberOrderByMessageIdDesc(username, sendRequest.getSender()).get(0);
 
 				SendMessageRequest sendMessageRequest = new SendMessageRequest();
 				sendMessageRequest.setChatSessionId(chatSessionId);
@@ -251,7 +247,7 @@ public class ChatController {
 				userChat.setUuid(UUID.randomUUID().toString());
 				userChat.setCreatedBy(username);
 				userChat.setCreatedAt(localDateTime);
-				userChat.setUserNumber(sendRequest.getNo());
+				userChat.setUserNumber(sendRequest.getSender());
 				userChat.setMessageIn(sendRequest.getMessage());
 				userChat.setMessageOut(message);
 				userChat.setMessageId(messageId);
@@ -262,7 +258,7 @@ public class ChatController {
 				return ResponseEntity.status(HttpStatus.OK).body(message);
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("No persona found for " + username);
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("No persona found for device " + sendRequest.getDevice());
 		}		
 	}
 }

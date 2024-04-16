@@ -36,12 +36,14 @@ import org.keycloak.quickstart.db.entity.DocumentSetConnector;
 import org.keycloak.quickstart.db.entity.Persona;
 import org.keycloak.quickstart.db.entity.Prompt;
 import org.keycloak.quickstart.db.entity.User;
+import org.keycloak.quickstart.db.entity.UserFonnte;
 import org.keycloak.quickstart.db.repository.ConfigRepository;
 import org.keycloak.quickstart.db.repository.ConnectorRepository;
 import org.keycloak.quickstart.db.repository.DocumentSetConnectorRepository;
 import org.keycloak.quickstart.db.repository.DocumentSetRepository;
 import org.keycloak.quickstart.db.repository.PersonaRepository;
 import org.keycloak.quickstart.db.repository.PromptRepository;
+import org.keycloak.quickstart.db.repository.UserFonnteRepository;
 import org.keycloak.quickstart.db.repository.UserRepository;
 import org.keycloak.quickstart.request.CreateConnectorRequest;
 import org.keycloak.quickstart.request.CreateConnectorRequest.ConnectorSpecificConfig;
@@ -122,6 +124,9 @@ public class UploadController {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private UserFonnteRepository userFonnteRepository;
 
 	private final WebClient webClient;
 
@@ -452,7 +457,7 @@ public class UploadController {
 	}
 
 	@PostMapping("/add-persona")
-	public ResponseEntity<?> postAddPersona(@RequestParam String name, @RequestParam String description, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
+	public ResponseEntity<?> postAddPersona(@RequestParam String name, @RequestParam String description, @RequestParam String number, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
 		if (file.isEmpty()) {
 			return ResponseEntity.badRequest().body("File is empty");
 		}
@@ -706,9 +711,23 @@ public class UploadController {
 		persona.setPersonaId(personaId);
 		persona.setName(personaRequest.getName());
 		persona.setDescription(personaRequest.getDescription());
+		persona.setNumber(number);
 		persona.setPromptId(promptId);
 		persona.setDocumentSetId(documentSetId);
 		personaRepository.save(persona);
+
+		// 10. Add Device
+		logger.info("10. Add Device");
+		// Load user fonnte
+		UserFonnte userFonnteExample = new UserFonnte();
+		userFonnteExample.setUsername(user.getUsernameFonnte());
+		UserFonnte userFonnte = userFonnteRepository.findOne(Example.of(userFonnteExample)).orElse(null);
+
+		// Add device
+		ResponseEntity<String> addDeviceResponse = addDevice(userFonnte.getUsernameToken(), personaRequest.getName(), number);
+		if (!addDeviceResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(addDeviceResponse.getStatusCode()).body("Failed to run Add Device");
+		}
 
 		return ResponseEntity.ok("{\"message\":\"Process upload document completed successfully\"}");
 	}
@@ -892,6 +911,66 @@ public class UploadController {
 		HttpEntity<PersonaRequest> entity = new HttpEntity<>(personaRequest, headers);
 		RestTemplate restTemplate = new RestTemplate();
 		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+		return response;
+	}
+
+	public ResponseEntity<String> addDevice(String username, String name, String device) {
+		String url = "https://api.fonnte.com/add-device";
+	
+		// Headers setup
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+		headers.setAccept(Collections.singletonList(MediaType.ALL));
+		headers.set("authorization", "Fonnte");
+	
+		// Form Data setup
+		MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+		map.add("type", "add-device");
+		map.add("username", username);
+		map.add("name", name);
+		map.add("device", device);
+		map.add("chatbot", "true");
+		map.add("personal", "false");
+		map.add("group", "false");
+		map.add("agency", "");
+		map.add("package", "2");
+		map.add("quota", "1000");
+		map.add("expired", "0");
+	
+		// Creating HttpEntity with headers and form data
+		HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
+	
+		// RestTemplate initialization and POST request execution
+		RestTemplate restTemplate = new RestTemplate();
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+	
+		return response;
+	}
+
+	public ResponseEntity<String> login(String username, String password) {
+		String url = "https://api.fonnte.com/login";
+
+		// Setting up the headers
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+		headers.setAccept(Collections.singletonList(MediaType.ALL));
+		headers.set("authorization", "Fonnte");
+		headers.set("origin", "https://md.fonnte.com");
+
+		// Form Data
+		MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+		formData.add("type", "login");
+		formData.add("username", username);
+		formData.add("password", password);
+		formData.add("countryCode", "62");
+
+		// Creating the entity object with headers and form data
+		HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(formData, headers);
+
+		// RestTemplate to send the request
+		RestTemplate restTemplate = new RestTemplate();
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+
 		return response;
 	}
 }

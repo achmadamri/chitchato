@@ -30,6 +30,10 @@ public class Persona {
 
     private Integer documentSetId;
 
+    private String number;
+
+    private String numberToken;
+
     public String getUuid() {
         return uuid;
     }
@@ -108,5 +112,21 @@ public class Persona {
 
     public void setDocumentSetId(Integer documentSetId) {
         this.documentSetId = documentSetId;
+    }
+
+    public String getNumber() {
+        return number;
+    }
+
+    public void setNumber(String number) {
+        this.number = number;
+    }
+
+    public String getNumberToken() {
+        return numberToken;
+    }
+
+    public void setNumberToken(String numberToken) {
+        this.numberToken = numberToken;
     }
 }
