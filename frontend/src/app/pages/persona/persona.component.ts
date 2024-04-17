@@ -284,6 +284,8 @@ export class PersonaComponent implements OnInit {
     });
   }
 
+  getQRCounter: number = 0;
+
   postGetQr(personaUuid: string) {
     this.clicked = true;
 
@@ -295,10 +297,22 @@ export class PersonaComponent implements OnInit {
       this.qrCode = null;
 
       if (data.url == '') {
-        this.util.showNotification(2, 'bottom', 'center', 'Already connected');
+        this.util.showNotification(4, 'bottom', 'center', 'Already connected');
       } else {
         this.util.showNotification(2, 'bottom', 'center', 'QR code generated');
+
         this.qrCode = 'data:image/png;base64,' + data.url;
+
+        this.getQRCounter++;
+
+        if (this.getQRCounter > 5) {
+          this.getQRCounter = 0;
+          this.util.showNotification(4, 'bottom', 'center', 'QR code expired');
+        } else {
+          setTimeout(() => {
+            this.postGetQr(personaUuid);
+          }, 5000);
+        }        
       }
     }, error => {
       console.log(error);
