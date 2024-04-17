@@ -110,17 +110,6 @@
             </div>
           </form>          
         </div>
-      </div>      
-      <div class="card shadow">
-        <div class="card-header border-0">
-          <div class="row align-items-center">
-            <div class="col-8">
-              <h3 class="mb-0">Add Document</h3>
-            </div>
-            <div class="col-4 text-right">
-            </div>
-          </div>
-        </div>
         <div class="card-body">
           <form>
             <div class="pl-lg-4">
@@ -139,8 +128,8 @@
               <button type="button" class="btn btn-primary" (click)="postAddPersona()" [disabled]="clicked">Add</button>
             </div>
           </form>          
-        </div>       
-      </div>
+        </div>
+      </div> 
     </div>
   </div>
   <!-- showAdd -->
@@ -200,6 +189,7 @@
           </form>          
         </div>
       </div>
+      <br>
       <div class="card shadow">
         <div class="card-header border-0">
           <h3 class="mb-0">Document List ({{getPersonaResponse.lstConnector.length}}/{{getUserResponse.maxConnector}})</h3>
@@ -235,17 +225,6 @@
             </tbody>
           </table>
         </div>        
-      </div>
-      <div class="card shadow">
-        <div class="card-header border-0">
-          <div class="row align-items-center">
-            <div class="col-8">
-              <h3 class="mb-0">Add Document</h3>
-            </div>
-            <div class="col-4 text-right">
-            </div>
-          </div>
-        </div>
         <div class="card-body">
           <form>
             <div class="pl-lg-4">
@@ -263,8 +242,9 @@
               <button type="button" class="btn btn-primary" (click)="postUploadDocument()" [disabled]="clicked">Upload</button>
             </div>
           </form>          
-        </div>       
-      </div>
+        </div>
+      </div>      
+      <br>
       <div class="card shadow">
         <div class="card-header border-0">
           <div class="row align-items-center">
@@ -283,13 +263,15 @@
                   <div class="form-group">
                     <label class="form-control-label" for="input-name">Number</label>
                     <input type="text" id="input-name" class="form-control form-control-alternative" placeholder="" [(ngModel)]="getPersonaResponse.persona.number" name="number" readonly>
+                    <h6>With connecting I understand my whatsapp might get banned and chitchato are not responsible for it</h6>
+                    <img *ngIf="qrCode != undefined" [src]="qrCode" width="200" height="200">
                   </div>
                 </div>
               </div>        
             </div>
             <div class="text-right">
               <button type="button" class="btn btn-primary" (click)="doShowList(null)" [disabled]="clicked">Back</button>
-              <button type="button" class="btn btn-primary" (click)="postUpdatePersona()" [disabled]="clicked">Connect</button>
+              <button type="button" class="btn btn-primary" (click)="postGetQr(getPersonaResponse.persona.uuid)" [disabled]="clicked">Connect</button>
             </div>
           </form>          
         </div>

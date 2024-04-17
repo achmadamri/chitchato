@@ -35,4 +35,8 @@ public class User {
     private String usernameFonnte;
 
     private String fastapiusersauth;
+
+    private String status;
+
+    private String type;
 }

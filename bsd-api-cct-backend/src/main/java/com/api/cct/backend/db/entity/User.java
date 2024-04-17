@@ -28,6 +28,10 @@ public class User {
 
     private String fastapiusersauth;
 
+    private String status;
+
+    private String type;
+
     public String getUuid() {
         return uuid;
     }
@@ -98,5 +102,21 @@ public class User {
 
     public void setFastapiusersauth(String fastapiusersauth) {
         this.fastapiusersauth = fastapiusersauth;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 }

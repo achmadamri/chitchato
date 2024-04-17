@@ -217,6 +217,36 @@ public class UploadController {
 		return ResponseEntity.ok("{\"message\":\"Process delete document completed successfully\"}");
 	}
 
+	@PostMapping("/get-qr")
+	public ResponseEntity<?> postGetQr(@RequestParam String personaUuid, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
+		// Initialize username
+		String username = jwt.getClaimAsString("preferred_username");
+		logger.info("username: {}", username);
+
+		// Load persona from database
+		Persona personaExample = new Persona();
+		personaExample.setUuid(personaUuid);
+		personaExample.setCreatedBy(username);
+		Persona persona = personaRepository.findOne(Example.of(personaExample)).orElse(null);
+		
+		// Call getQr(String numberToken)
+		ResponseEntity<String> response = getQr(persona.getNumberToken());
+
+		// If response = "{"reason":"device already connect","status":false}"
+		if (response.getBody().contains("device already connect")) {
+			return ResponseEntity.ok("{\"url\":\"" + "" + "\"}");
+		} else {
+			// Initialize ObjectMapper for JSON parsing
+			ObjectMapper objectMapper = new ObjectMapper();
+
+			// Get url from response
+			JsonNode node = objectMapper.readTree(response.getBody());
+			String url = node.get("url").asText();
+			
+			return ResponseEntity.ok("{\"url\":\"" + url + "\"}");
+		}
+	}
+
 	@PostMapping("/upload-document")
 	public ResponseEntity<?> postUploadDocument(@RequestParam String personaUuid, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
 		if (file.isEmpty()) {
@@ -479,7 +509,7 @@ public class UploadController {
 		Persona personaExampleCount = new Persona();
 		personaExampleCount.setCreatedBy(username);
 		if (personaRepository.count(Example.of(personaExampleCount)) >= user.getMaxPersona()) {
-			return ResponseEntity.status(500).body("Max persona limit");
+			return ResponseEntity.status(500).body("{\"message\":\"Max persona limit\"}");
 		}
 
 		// Initialize ObjectMapper for JSON parsing
@@ -704,18 +734,6 @@ public class UploadController {
 		int personaId = personaNode.path("id").asInt();
 		logger.info("9. Create Persona. personaId {}", personaId);
 
-		Persona persona = new Persona();
-		persona.setUuid(uuid);
-		persona.setCreatedAt(localDateTime);
-		persona.setCreatedBy(jwt.getClaimAsString("preferred_username"));
-		persona.setPersonaId(personaId);
-		persona.setName(personaRequest.getName());
-		persona.setDescription(personaRequest.getDescription());
-		persona.setNumber(number);
-		persona.setPromptId(promptId);
-		persona.setDocumentSetId(documentSetId);
-		personaRepository.save(persona);
-
 		// 10. Add Device
 		logger.info("10. Add Device");
 		// Load user fonnte
@@ -728,6 +746,23 @@ public class UploadController {
 		if (!addDeviceResponse.getStatusCode().is2xxSuccessful()) {
 			return ResponseEntity.status(addDeviceResponse.getStatusCode()).body("Failed to run Add Device");
 		}
+		
+		// Get token from ResponseEntity<String>
+		JsonNode addDeviceNode = objectMapper.readTree(addDeviceResponse.getBody());
+		String token = addDeviceNode.path("token").asText();
+
+		Persona persona = new Persona();
+		persona.setUuid(uuid);
+		persona.setCreatedAt(localDateTime);
+		persona.setCreatedBy(jwt.getClaimAsString("preferred_username"));
+		persona.setPersonaId(personaId);
+		persona.setName(personaRequest.getName());
+		persona.setDescription(personaRequest.getDescription());
+		persona.setNumber(number);
+		persona.setNumberToken(token);
+		persona.setPromptId(promptId);
+		persona.setDocumentSetId(documentSetId);
+		personaRepository.save(persona);
 
 		return ResponseEntity.ok("{\"message\":\"Process upload document completed successfully\"}");
 	}
@@ -944,6 +979,17 @@ public class UploadController {
 		RestTemplate restTemplate = new RestTemplate();
 		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 	
+		return response;
+	}
+
+	public ResponseEntity<String> getQr(String token) {
+		String url = "https://api.fonnte.com/qr";
+		HttpHeaders headers = new HttpHeaders();
+		headers.set("Authorization", token);
+
+		HttpEntity<String> entity = new HttpEntity<>(headers);
+		RestTemplate restTemplate = new RestTemplate();
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 		return response;
 	}
 

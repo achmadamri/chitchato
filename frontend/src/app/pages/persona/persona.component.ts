@@ -27,6 +27,7 @@ export class PersonaComponent implements OnInit {
   systemPrompt = '';
   taskPrompt = '';  
   showAdd = false;
+  qrCode;
   public getUserResponse: GetUserResponse;
   public getPersonaListResponse: GetPersonaListResponse;
   public getPersonaResponse: GetPersonaResponse;
@@ -49,6 +50,8 @@ export class PersonaComponent implements OnInit {
     this.showList = true;
     this.showDetails = false;
     this.showAdd = false;
+
+    this.qrCode = null;
 
     this.getPersonaListResponse = null;
     this.getPersonaResponse = null;
@@ -232,6 +235,16 @@ export class PersonaComponent implements OnInit {
       return;
     }
 
+    if (isNaN(this.postAddPersonaRequest.number)) {
+      this.util.showNotification(4, 'bottom', 'center', 'Number must be a number');
+      return;
+    }
+
+    if (!this.selectedFileAdd) {
+      this.util.showNotification(4, 'bottom', 'center', 'No file selected');
+      return;
+    }
+
     this.clicked = true;
 
     this.uploadService.postAddPersona(this.postAddPersonaRequest.name, this.postAddPersonaRequest.description, this.postAddPersonaRequest.number, this.selectedFileAdd).subscribe(data => {
@@ -267,6 +280,32 @@ export class PersonaComponent implements OnInit {
       } else {        
         this.clicked = false;
         this.util.showNotification(4, 'bottom', 'center', 'Error getting persona list');
+      }
+    });
+  }
+
+  postGetQr(personaUuid: string) {
+    this.clicked = true;
+
+    this.uploadService.postGetQr(personaUuid).subscribe(data => {
+      console.log(data);
+
+      this.clicked = false;      
+
+      if (data.url == '') {
+        this.util.showNotification(2, 'bottom', 'center', 'Already connected');
+      } else {
+        this.util.showNotification(2, 'bottom', 'center', 'QR code generated');
+        this.qrCode = data.url;
+      }
+    }, error => {
+      console.log(error);
+
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', error.error.message);
       }
     });
   }

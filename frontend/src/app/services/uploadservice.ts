@@ -23,6 +23,17 @@ export class UploadService {
     return this.httpClient.post(`${this.apiUrl}/delete-document`, {}, { headers, params });
   }
 
+  postGetQr(personaUuid: string): Observable<any> {
+    const headers = new HttpHeaders()
+      .set('Content-Type', 'application/json');
+
+    const params = new HttpParams()
+      .set('personaUuid', personaUuid)
+      ;
+
+    return this.httpClient.post(`${this.apiUrl}/get-qr`, {}, { headers, params });
+  }
+
   postUploadDocument(personaUuid: string, selectedFile: File): Observable<any> {
     console.log('postDeleteDocument selectedFile:', selectedFile);
     const headers = new HttpHeaders()
@@ -38,7 +49,7 @@ export class UploadService {
     return this.httpClient.post(`${this.apiUrl}/upload-document`, formData, { headers, params });
   }
 
-  postAddPersona(name: string, description: string, number: string, selectedFile: File): Observable<any> {
+  postAddPersona(name: string, description: string, number: number, selectedFile: File): Observable<any> {
     console.log('postDeleteDocument selectedFile:', selectedFile);
     const headers = new HttpHeaders()
       ;
