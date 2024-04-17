@@ -27,7 +27,7 @@ export class PersonaComponent implements OnInit {
   systemPrompt = '';
   taskPrompt = '';  
   showAdd = false;
-  qrCode;
+  qrCode = null;
   public getUserResponse: GetUserResponse;
   public getPersonaListResponse: GetPersonaListResponse;
   public getPersonaResponse: GetPersonaResponse;
@@ -290,13 +290,15 @@ export class PersonaComponent implements OnInit {
     this.uploadService.postGetQr(personaUuid).subscribe(data => {
       console.log(data);
 
-      this.clicked = false;      
+      this.clicked = false;
+
+      this.qrCode = null;
 
       if (data.url == '') {
         this.util.showNotification(2, 'bottom', 'center', 'Already connected');
       } else {
         this.util.showNotification(2, 'bottom', 'center', 'QR code generated');
-        this.qrCode = data.url;
+        this.qrCode = 'data:image/png;base64,' + data.url;
       }
     }, error => {
       console.log(error);

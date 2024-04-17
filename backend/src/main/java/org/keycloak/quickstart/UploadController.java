@@ -223,6 +223,16 @@ public class UploadController {
 		String username = jwt.getClaimAsString("preferred_username");
 		logger.info("username: {}", username);
 
+		// Load user from database
+		User userExample = new User();
+		userExample.setUsername(username);
+		User user = userRepository.findOne(Example.of(userExample)).orElse(null);
+
+		// Load user fonnte from database
+		UserFonnte userFonnteExample = new UserFonnte();
+		userFonnteExample.setUsername(user.getUsernameFonnte());
+		UserFonnte userFonnte = userFonnteRepository.findOne(Example.of(userFonnteExample)).orElse(null);
+
 		// Load persona from database
 		Persona personaExample = new Persona();
 		personaExample.setUuid(personaUuid);
@@ -230,7 +240,7 @@ public class UploadController {
 		Persona persona = personaRepository.findOne(Example.of(personaExample)).orElse(null);
 		
 		// Call getQr(String numberToken)
-		ResponseEntity<String> response = getQr(persona.getNumberToken());
+		ResponseEntity<String> response = getQr(userFonnte.getUsernameToken(), persona.getNumberToken());
 
 		// If response = "{"reason":"device already connect","status":false}"
 		if (response.getBody().contains("device already connect")) {
@@ -982,14 +992,28 @@ public class UploadController {
 		return response;
 	}
 
-	public ResponseEntity<String> getQr(String token) {
+	public ResponseEntity<String> getQr(String username, String device) {
 		String url = "https://api.fonnte.com/qr";
-		HttpHeaders headers = new HttpHeaders();
-		headers.set("Authorization", token);
 
-		HttpEntity<String> entity = new HttpEntity<>(headers);
+		// Setting up the headers
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+		headers.setAccept(Collections.singletonList(MediaType.ALL));
+		headers.set("authorization", "Fonnte");
+
+		// Form Data
+		MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+		formData.add("type", "qr");
+		formData.add("username", username);
+		formData.add("device", device);
+
+		// Creating the entity object with headers and form data
+		HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(formData, headers);
+
+		// RestTemplate to send the request
 		RestTemplate restTemplate = new RestTemplate();
 		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+
 		return response;
 	}
 
@@ -1001,7 +1025,6 @@ public class UploadController {
 		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 		headers.setAccept(Collections.singletonList(MediaType.ALL));
 		headers.set("authorization", "Fonnte");
-		headers.set("origin", "https://md.fonnte.com");
 
 		// Form Data
 		MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
