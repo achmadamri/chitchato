@@ -751,19 +751,19 @@ public class UploadController {
 		// 10. Add Device
 		logger.info("10. Add Device");
 		// Load user fonnte
-		// UserFonnte userFonnteExample = new UserFonnte();
-		// userFonnteExample.setUsername(user.getUsernameFonnte());
-		// UserFonnte userFonnte = userFonnteRepository.findOne(Example.of(userFonnteExample)).orElse(null);
+		UserFonnte userFonnteExample = new UserFonnte();
+		userFonnteExample.setUsername(user.getUsernameFonnte());
+		UserFonnte userFonnte = userFonnteRepository.findOne(Example.of(userFonnteExample)).orElse(null);
 
-		// // Add device
-		// ResponseEntity<String> addDeviceResponse = addDevice(userFonnte.getUsernameToken(), personaRequest.getName(), number);
-		// if (!addDeviceResponse.getStatusCode().is2xxSuccessful()) {
-		// 	return ResponseEntity.status(addDeviceResponse.getStatusCode()).body("Failed to run Add Device");
-		// }
+		// Add device
+		ResponseEntity<String> addDeviceResponse = addDevice(userFonnte.getUsernameToken(), personaRequest.getName(), number);
+		if (!addDeviceResponse.getStatusCode().is2xxSuccessful()) {
+			return ResponseEntity.status(addDeviceResponse.getStatusCode()).body("Failed to run Add Device");
+		}
 		
-		// // Get token from ResponseEntity<String>
-		// JsonNode addDeviceNode = objectMapper.readTree(addDeviceResponse.getBody());
-		// String token = addDeviceNode.path("token").asText();
+		// Get token from ResponseEntity<String>
+		JsonNode addDeviceNode = objectMapper.readTree(addDeviceResponse.getBody());
+		String token = addDeviceNode.path("token").asText();
 
 		Persona persona = new Persona();
 		persona.setUuid(uuid);
@@ -773,7 +773,7 @@ public class UploadController {
 		persona.setName(personaRequest.getName());
 		persona.setDescription(personaRequest.getDescription());
 		persona.setNumber(number);
-		// persona.setNumberToken(token);
+		persona.setNumberToken(token);
 		persona.setPromptId(promptId);
 		persona.setDocumentSetId(documentSetId);
 		personaRepository.save(persona);

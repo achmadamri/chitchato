@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 18 Apr 2024 pada 15.34
+-- Waktu pembuatan: 18 Apr 2024 pada 15.37
 -- Versi server: 10.4.27-MariaDB
 -- Versi PHP: 8.0.25
 
@@ -137,7 +137,7 @@ CREATE TABLE `persona` (
 --
 
 INSERT INTO `persona` (`uuid`, `created_at`, `created_by`, `update_at`, `updated_by`, `persona_id`, `name`, `description`, `prompt_id`, `document_set_id`, `number`, `number_token`) VALUES
-('047fc2ad-871d-460c-a9dc-15c52ede922e', '2024-04-18 20:33:34', 'achmad.amri@gmail.com', NULL, NULL, 37, 'BTechno', 'BTechno', 52, 61, '6281380782318', NULL);
+('047fc2ad-871d-460c-a9dc-15c52ede922e', '2024-04-18 20:33:34', 'achmad.amri@gmail.com', NULL, NULL, 37, 'BTechno', 'BTechno', 52, 61, '6285212572194', 'ZLzXYm4cUtyk4Acxs16Y');
 
 -- --------------------------------------------------------
 
@@ -193,7 +193,7 @@ CREATE TABLE `user` (
 
 INSERT INTO `user` (`uuid`, `created_at`, `created_by`, `update_at`, `updated_by`, `username`, `username_danswer`, `max_connector`, `max_persona`, `username_fonnte`, `fastapiusersauth`, `status`, `type`) VALUES
 ('c63daab5-a1d8-4f65-9085-36a027e817d9', '2024-04-01 12:49:32', NULL, NULL, NULL, 'master', 'administrator@chitchato.com', 1, 1, '6281380782318', 'OG_aeYviwuPzWASxbGcO71fI2GuDfTRCtdNWqvbxGow', 'Active', 'Free'),
-('ad46171e-2abc-457b-860e-7cdcac9edec3', '2024-04-18 15:07:42', NULL, NULL, NULL, 'achmad.amri@gmail.com', 'administrator@chitchato.com', 2, 2, '6281380782318', 'OG_aeYviwuPzWASxbGcO71fI2GuDfTRCtdNWqvbxGow', 'Active', 'Free');
+('ad46171e-2abc-457b-860e-7cdcac9edec3', '2024-04-18 15:07:42', NULL, NULL, NULL, 'achmad.amri@gmail.com', 'administrator@chitchato.com', 1, 1, '6281380782318', 'OG_aeYviwuPzWASxbGcO71fI2GuDfTRCtdNWqvbxGow', 'Active', 'Free');
 
 -- --------------------------------------------------------
 
