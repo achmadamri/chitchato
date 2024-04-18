@@ -8,6 +8,10 @@ import {
   chartExample1,
   chartExample2
 } from "../../variables/charts";
+import { UserService } from 'src/app/services/userservice';
+import { GetUserResponse } from 'src/app/services/getuserresponse';
+import { GetPersonaListResponse } from 'src/app/services/getpersonalistresponse';
+import { Util } from 'src/app/util';
 
 @Component({
   selector: 'app-dashboard',
@@ -16,13 +20,32 @@ import {
 })
 export class DashboardComponent implements OnInit {
 
+  util: Util = new Util();
   public datasets: any;
   public data: any;
   public salesChart;
   public clicked: boolean = true;
   public clicked1: boolean = false;
+  public getUserResponse: GetUserResponse;
+  public getPersonaListResponse: GetPersonaListResponse;
+
+  constructor(
+    private userService: UserService   
+  ) { }
 
   ngOnInit() {
+
+    this.userService.getUser().subscribe(data => {
+      this.getUserResponse = data;
+      
+    }, error => {
+      if (error.status === 403) {
+        window.location.href = '/';        
+      } else {        
+        this.clicked = false;
+        this.util.showNotification(4, 'bottom', 'center', 'Error getting user');
+      }
+    });
 
     this.datasets = [
       [0, 20, 10, 30, 15, 40, 20, 60, 60],

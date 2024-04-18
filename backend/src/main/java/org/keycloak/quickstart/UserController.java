@@ -15,6 +15,10 @@
  */
 package org.keycloak.quickstart;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.Optional;
 
 import org.keycloak.quickstart.db.entity.User;
@@ -31,6 +35,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+
 @RestController
 @RequestMapping("/user")
 public class UserController {
@@ -41,7 +48,7 @@ public class UserController {
 	private UserRepository userRepository;
     
 	@GetMapping("/get-user")
-    public ResponseEntity<GetUserResponse> getPersonaList(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<GetUserResponse> getPersonaList(@AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
         GetUserResponse response = new GetUserResponse();
 
         // Initialize username
@@ -54,10 +61,41 @@ public class UserController {
         Optional<User> user = userRepository.findOne(Example.of(userExample));
 
         if (user.isPresent()) {
+            // Return user information
+            logger.info("Return user information: {}", username);
+
             response.setUuid(user.get().getUuid());
             response.setUsername(user.get().getUsername());
             response.setMaxConnector(user.get().getMaxConnector());
             response.setMaxPersona(user.get().getMaxPersona());
+        } else {
+            // Register new user
+            logger.info("Register new user: {}", username);
+
+            // Create a Date instance
+            Date now = new Date();
+
+            // Convert Date to LocalDateTime
+            ZonedDateTime zdt = now.toInstant().atZone(ZoneId.systemDefault());
+            LocalDateTime localDateTime = zdt.toLocalDateTime();
+
+            // Load master user
+            User masterUserExample = new User();
+            masterUserExample.setUsername("master");
+            Optional<User> masterUser = userRepository.findOne(Example.of(masterUserExample));            
+
+            User newUser = new User();
+            newUser.setUuid(java.util.UUID.randomUUID().toString());
+            newUser.setCreatedAt(localDateTime);
+            newUser.setUsername(username);
+            newUser.setUsernameDanswer(masterUser.get().getUsernameDanswer());
+            newUser.setMaxConnector(1);
+            newUser.setMaxPersona(1);
+            newUser.setUsernameFonnte(masterUser.get().getUsernameFonnte());
+            newUser.setFastapiusersauth(masterUser.get().getFastapiusersauth());
+            newUser.setStatus("Active");
+            newUser.setType("Free");
+            userRepository.save(newUser);
         }
 
         // Return the list of personas as a JSON string
