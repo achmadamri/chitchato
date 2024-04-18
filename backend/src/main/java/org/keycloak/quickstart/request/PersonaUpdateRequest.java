@@ -37,4 +37,9 @@ public class PersonaUpdateRequest {
     
     @JsonProperty("starter_messages")
     private List<String> starterMessages;
+
+    @JsonProperty("is_public")
+    private boolean isPublic;
+
+    private List<Integer> groups;
 }

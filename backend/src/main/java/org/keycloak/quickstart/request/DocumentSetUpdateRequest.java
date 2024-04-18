@@ -16,4 +16,11 @@ public class DocumentSetUpdateRequest {
 
     @JsonProperty("cc_pair_ids")
     private List<Integer> ccPairIds;
+
+    @JsonProperty("is_public")
+    private boolean isPublic;
+
+    private List<Integer> groups;
+
+    private List<Integer> users;
 }

@@ -221,6 +221,7 @@ public class PersonaController {
         personaUpdateRequest.setDocumentSetIds(List.of(persona.getDocumentSetId()));
         personaUpdateRequest.setLlmModelVersionOverride(null);
         personaUpdateRequest.setStarterMessages(List.of());
+        personaUpdateRequest.setPublic(false);
 
         logger.info("updatePersonaRequest: {}", updatePersonaRequest);
         ResponseEntity<?> updatePersonaResponseEntity = updatePersona(personaUpdateRequest, persona.getPersonaId(), user.getFastapiusersauth())
