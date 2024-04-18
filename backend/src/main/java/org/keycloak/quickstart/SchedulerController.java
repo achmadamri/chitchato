@@ -21,7 +21,9 @@ import java.util.List;
 
 import org.keycloak.quickstart.db.entity.User;
 import org.keycloak.quickstart.db.entity.UserDanswer;
+import org.keycloak.quickstart.db.entity.UserFonnte;
 import org.keycloak.quickstart.db.repository.UserDanswerRepository;
+import org.keycloak.quickstart.db.repository.UserFonnteRepository;
 import org.keycloak.quickstart.db.repository.UserRepository;
 import org.keycloak.quickstart.request.LoginDanswerRequest;
 import org.slf4j.Logger;
@@ -34,9 +36,16 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/scheduler")
@@ -48,7 +57,10 @@ public class SchedulerController {
 	private RestTemplate restTemplate;
 
     @Autowired
-	private UserDanswerRepository userDanswerRepository;    
+	private UserDanswerRepository userDanswerRepository;
+
+    @Autowired
+	private UserFonnteRepository userFonnteRepository;
 
     @Autowired
 	private UserRepository userRepository;
@@ -66,9 +78,6 @@ public class SchedulerController {
         for (UserDanswer userDanswer : userDanswers) {
             // Log the user danswer email
             logger.info("email: {}", userDanswer.getUsername());
-
-            // Log the user danswer password
-            logger.info("password: {}", userDanswer.getPassword());
 
             // Call the loginDanswer method with the user danswer email and password
             ResponseEntity<String> entity = loginDanswer(userDanswer.getUsername(), userDanswer.getPassword());
@@ -102,6 +111,39 @@ public class SchedulerController {
         logger.info("loginDanswerScheduler :: Success");
     }
 
+    // Schedule a task to run every midnight
+    @Scheduled(cron = "0 0 0 * * *")
+    // @Scheduled(fixedRate = 5000)
+    public void loginFonnteScheduler() throws JsonMappingException, JsonProcessingException {
+        logger.info("loginFonnteScheduler :: Execution Time - {}", LocalDateTime.now());
+
+        // Load all user fonnte from the database
+        List<UserFonnte> userFonntes = userFonnteRepository.findAll();
+
+        // Iterate over all user fonnte
+        for (UserFonnte userFonnte : userFonntes) {
+            // Log the user fonnte username
+            logger.info("username: {}", userFonnte.getUsername());
+
+            // Call the loginFonnte method with the user fonnte username and password
+            ResponseEntity<String> entity = loginFonnte(userFonnte.getUsername(), userFonnte.getPassword());
+            
+            // Initialize ObjectMapper for JSON parsing
+		    ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode node = objectMapper.readTree(entity.getBody());
+
+            // Extract the username field
+            String username = node.path("username").asText().replaceAll("\"", "");
+            
+            // Save the user fonnte to the database
+            userFonnte.setUsernameToken(username);
+            userFonnteRepository.save(userFonnte);
+        }
+
+        // Log success
+        logger.info("loginFonnteScheduler :: Success");
+    }
+
     public ResponseEntity<String> loginDanswer(String email, String password) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -114,5 +156,31 @@ public class SchedulerController {
 
 		HttpEntity<LoginDanswerRequest> entity = new HttpEntity<>(loginDanswerRequest, headers);
 		return restTemplate.exchange("https://app.danswer.ai/api/auth/login", HttpMethod.POST, entity, String.class);
+	}
+
+    public ResponseEntity<String> loginFonnte(String username, String password) {
+		String url = "https://api.fonnte.com/login";
+
+		// Setting up the headers
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+		headers.setAccept(Collections.singletonList(MediaType.ALL));
+		headers.set("authorization", "Fonnte");
+
+		// Form Data
+		MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+		formData.add("type", "login");
+		formData.add("username", username);
+		formData.add("password", password);
+		formData.add("countryCode", "62");
+
+		// Creating the entity object with headers and form data
+		HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(formData, headers);
+
+		// RestTemplate to send the request
+		RestTemplate restTemplate = new RestTemplate();
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+
+		return response;
 	}
 }

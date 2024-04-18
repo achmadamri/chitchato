@@ -299,19 +299,21 @@ export class PersonaComponent implements OnInit {
       if (data.url == '') {
         this.util.showNotification(4, 'bottom', 'center', 'Already connected');
       } else {
-        this.util.showNotification(2, 'bottom', 'center', 'QR code generated');
+        if (this.getQRCounter == 0) {
+          this.util.showNotification(2, 'bottom', 'center', 'QR code generated');
+        }
 
         this.qrCode = 'data:image/png;base64,' + data.url;
 
         this.getQRCounter++;
 
-        if (this.getQRCounter > 5) {
+        if (this.getQRCounter >= 3) {
           this.getQRCounter = 0;
           this.util.showNotification(4, 'bottom', 'center', 'QR code expired');
         } else {
           setTimeout(() => {
             this.postGetQr(personaUuid);
-          }, 5000);
+          }, 10000);
         }        
       }
     }, error => {

@@ -1016,30 +1016,4 @@ public class UploadController {
 
 		return response;
 	}
-
-	public ResponseEntity<String> login(String username, String password) {
-		String url = "https://api.fonnte.com/login";
-
-		// Setting up the headers
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-		headers.setAccept(Collections.singletonList(MediaType.ALL));
-		headers.set("authorization", "Fonnte");
-
-		// Form Data
-		MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-		formData.add("type", "login");
-		formData.add("username", username);
-		formData.add("password", password);
-		formData.add("countryCode", "62");
-
-		// Creating the entity object with headers and form data
-		HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(formData, headers);
-
-		// RestTemplate to send the request
-		RestTemplate restTemplate = new RestTemplate();
-		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
-
-		return response;
-	}
 }
