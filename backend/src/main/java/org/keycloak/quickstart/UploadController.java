@@ -659,6 +659,7 @@ public class UploadController {
 		List<Integer> ccPairIds = new ArrayList<>();
 		ccPairIds.add(ccPairId);
 		documentRequest.setCcPairIds(ccPairIds);
+		documentRequest.setPublic(true);
 
 		ResponseEntity<String> documentResponse = createDocumentSet(documentRequest, user.getFastapiusersauth());
 		if (!documentResponse.getStatusCode().is2xxSuccessful()) {
@@ -666,7 +667,6 @@ public class UploadController {
 		}
 		int documentSetId = Integer.parseInt(documentResponse.getBody());
 		logger.info("7. Create Document Set. documentSetId {}", documentSetId);
-
 
 		// Save Document Set to database
 		DocumentSet documentSet = new DocumentSet();
@@ -734,6 +734,7 @@ public class UploadController {
 		List<Integer> documentSetIds = new ArrayList<>();
 		documentSetIds.add(documentSetId);
 		personaRequest.setDocumentSetIds(documentSetIds);
+		personaRequest.setPublic(true);
 
 		ResponseEntity<String> personaResponse = createPersona(personaRequest, user.getFastapiusersauth());
 		if (!personaResponse.getStatusCode().is2xxSuccessful()) {

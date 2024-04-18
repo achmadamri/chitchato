@@ -297,7 +297,7 @@ export class PersonaComponent implements OnInit {
       this.qrCode = null;
 
       if (data.url == '') {
-        this.util.showNotification(4, 'bottom', 'center', 'Already connected');
+        this.util.showNotification(4, 'bottom', 'center', 'Connected');
       } else {
         if (this.getQRCounter == 0) {
           this.util.showNotification(2, 'bottom', 'center', 'QR code generated');
