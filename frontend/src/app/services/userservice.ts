@@ -9,7 +9,8 @@ import { GetUserResponse } from "./getuserresponse";
   providedIn: 'root'
 })
 export class UserService {
-  apiUrl = '/api/user';
+  // apiUrl = '/api/user';
+  apiUrl = 'https://api.chitchato.com/user';
 
   constructor(private keycloakService: KeycloakService, private httpClient: HttpClient) { }
 

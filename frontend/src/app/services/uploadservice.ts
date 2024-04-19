@@ -8,7 +8,8 @@ import { Observable } from "rxjs";
   providedIn: 'root'
 })
 export class UploadService {
-  apiUrl = '/api/upload';
+  // apiUrl = '/api/upload';
+  apiUrl = 'https://api.chitchato.com/upload';
 
   constructor(private keycloakService: KeycloakService, private httpClient: HttpClient) { }
 

@@ -11,7 +11,8 @@ import { PostUpdatePersonaRequest } from "./postupdatepersonarequest";
   providedIn: 'root'
 })
 export class PersonaService {
-  apiUrl = '/api/persona';
+  // apiUrl = '/api/persona';
+  apiUrl = 'https://api.chitchato.com/persona';
 
   constructor(private keycloakService: KeycloakService, private httpClient: HttpClient) { }
 
