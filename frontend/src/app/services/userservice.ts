@@ -10,7 +10,7 @@ import { GetMessageResponse } from "./getmessageresponse";
   providedIn: 'root'
 })
 export class UserService {
-  apiUrl = isDevMode() ? '/api/user' : 'https://api.chitchato.com/user';
+  apiUrl = isDevMode() ? '/api/user' : 'https://api.chitchato.com/api/user';
 
   constructor(private keycloakService: KeycloakService, private httpClient: HttpClient) { }
 
