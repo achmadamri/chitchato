@@ -200,6 +200,9 @@ public class ChatController {
 
 				userChatRepository.save(userChat);
 
+				// remove flag [admin] from message
+				message = message.replace("[admin]", "");
+
 				// Return message
 				return ResponseEntity.status(HttpStatus.OK).body(message);
 			} else {
@@ -265,6 +268,9 @@ public class ChatController {
 				}
 
 				userChatRepository.save(userChat);
+
+				// remove flag [admin] from message
+				message = message.replace("[admin]", "");
 
 				// Return message
 				return ResponseEntity.status(HttpStatus.OK).body(message);
