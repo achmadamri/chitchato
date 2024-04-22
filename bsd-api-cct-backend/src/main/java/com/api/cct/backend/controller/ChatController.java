@@ -192,7 +192,7 @@ public class ChatController {
 				userChat.setMessageId(messageId);
 				userChat.setParentMessageId(parentMessageId);
 				// if message contain [admin] then follow up
-				if (sendRequest.getMessage().contains("[admin]")) {					
+				if (message.contains("[admin]")) {					
 					userChat.setFollowUp("yes");
 				} else {
 					userChat.setFollowUp("no");
@@ -258,7 +258,7 @@ public class ChatController {
 				userChat.setMessageId(messageId);
 				userChat.setParentMessageId(parentMessageId);
 				// if message contain [admin] then follow up
-				if (sendRequest.getMessage().contains("[admin]")) {					
+				if (message.contains("[admin]")) {					
 					userChat.setFollowUp("yes");
 				} else {
 					userChat.setFollowUp("no");
