@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 
-@CrossOrigin
+@CrossOrigin(origins = "https://app.domain.com")
 @RestController
 @RequestMapping("/user")
 public class UserController {
