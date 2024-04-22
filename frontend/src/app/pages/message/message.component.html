@@ -47,19 +47,22 @@
                   {{userChat.createdAt | date: 'dd/MM/yyyy HH:mm:ss'}}
                 </td>
                 <td>
-                  In :
-                  <br>{{userChat.messageIn}}
-                  <br><br>
-                  Out :
-                  <br>{{userChat.messageOut}}
+                  <!-- wrap text -->
+                  <div class="text-wrap">
+                    In :
+                    <br>{{userChat.messageIn}}
+                    <br><br>
+                    Out :
+                    <br>{{userChat.messageOut}}
+                  </div>
                 </td>
                 <td>
-                  <div *ngIf="userChat.followUp == 'true'">
+                  <div *ngIf="userChat.followUp == 'yes'">
                     <span class="badge badge-dot mr-4">
                       <i class="bg-success"></i> Yes
                     </span>
                   </div>
-                  <div *ngIf="userChat.followUp == 'false'">
+                  <div *ngIf="userChat.followUp == 'no'">
                     <span class="badge badge-dot mr-4">
                       <i class="bg-danger"></i> No
                     </span>
