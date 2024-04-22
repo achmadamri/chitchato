@@ -32,6 +32,8 @@ public class User {
 
     private String type;
 
+    private LocalDateTime expiredAt;
+
     public String getUuid() {
         return uuid;
     }
@@ -118,5 +120,13 @@ public class User {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public LocalDateTime getExpiredAt() {
+        return expiredAt;
+    }
+
+    public void setExpiredAt(LocalDateTime expiredAt) {
+        this.expiredAt = expiredAt;
     }
 }

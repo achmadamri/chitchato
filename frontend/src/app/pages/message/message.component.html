@@ -1,0 +1,80 @@
+<div class="header bg-gradient-danger pb-8 pt-5 pt-md-8"></div>
+<!-- Page content -->
+<div class="container-fluid mt--7">
+
+  <!-- showList -->
+  <div class="row" *ngIf="showList">
+    <div class="col">
+      <div class="card shadow">
+        <div class="card-header border-0">
+          <h3 class="mb-0">Message List</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-items-center table-flush">
+            <thead class="thead-light">
+              <tr>
+                <th scope="col">Number</th>
+                <th scope="col">Created At</th>
+                <th scope="col">Message</th>
+                <th scope="col">Follow Up</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
+            <tbody *ngIf="getMessageResponse == undefined">
+              <!-- show loading -->
+              <tr>
+                <td colspan="3">
+                  <div class="text-center">
+                    <!-- loading.gif with size 50x50 -->
+                    <img src="../assets/img/theme/loading.gif" width="50" height="50">
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+            <tbody *ngIf="getMessageResponse != undefined">
+              <tr *ngFor="let userChat of getMessageResponse.lstUserChat">
+                <th scope="row">
+                  <div class="media align-items-center">
+                    <a href="javascript:void(0)" class="avatar rounded-circle mr-3">
+                      <img alt="Image placeholder" src="../assets/img/theme/istockphoto.jpg">
+                    </a>
+                    <div class="media-body">
+                      <span class="mb-0 text-sm">{{userChat.userNumber}}</span>
+                    </div>
+                  </div>
+                </th>
+                <td>
+                  {{userChat.createdAt | date: 'dd/MM/yyyy HH:mm:ss'}}
+                </td>
+                <td>
+                  In :
+                  <br>{{userChat.messageIn}}
+                  <br><br>
+                  Out :
+                  <br>{{userChat.messageOut}}
+                </td>
+                <td>
+                  <div *ngIf="userChat.followUp == 'true'">
+                    <span class="badge badge-dot mr-4">
+                      <i class="bg-success"></i> Yes
+                    </span>
+                  </div>
+                  <div *ngIf="userChat.followUp == 'false'">
+                    <span class="badge badge-dot mr-4">
+                      <i class="bg-danger"></i> No
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <button type="button" class="btn btn-primary" (click)="doShowDetails(userChat.uuid)" [disabled]="clicked">View</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>          
+        </div>
+      </div>      
+    </div>
+  </div>
+  <!-- showList -->
+
+</div>

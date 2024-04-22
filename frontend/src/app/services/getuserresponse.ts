@@ -4,4 +4,5 @@ export class GetUserResponse {
     device: string;
     maxConnector: number;
     maxPersona: number;
+    expiredAt: number;
 }

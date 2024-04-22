@@ -41,6 +41,9 @@ public class UserChat {
     @Column(name = "parent_message_id")
     private Integer parentMessageId;
 
+    @Column(name = "follow_up")
+    private String followUp;
+
     public String getUuid() {
         return uuid;
     }
@@ -119,5 +122,13 @@ public class UserChat {
 
     public void setParentMessageId(Integer parentMessageId) {
         this.parentMessageId = parentMessageId;
-    }   
+    }
+
+    public String getFollowUp() {
+        return followUp;
+    }
+
+    public void setFollowUp(String followUp) {
+        this.followUp = followUp;
+    }
 }

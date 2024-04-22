@@ -44,4 +44,7 @@ public class UserChat {
 
     @Column(name = "parent_message_id")
     private Integer parentMessageId;
+
+    @Column(name = "follow_up")
+    private String followUp;
 }

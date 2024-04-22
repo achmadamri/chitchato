@@ -19,10 +19,14 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 import org.keycloak.quickstart.db.entity.User;
+import org.keycloak.quickstart.db.entity.UserChat;
+import org.keycloak.quickstart.db.repository.UserChatRepository;
 import org.keycloak.quickstart.db.repository.UserRepository;
+import org.keycloak.quickstart.response.GetMessagesResponse;
 import org.keycloak.quickstart.response.GetUserResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,9 +50,12 @@ public class UserController {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private UserChatRepository userChatRepository;
     
 	@GetMapping("/get-user")
-    public ResponseEntity<GetUserResponse> getPersonaList(@AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
+    public ResponseEntity<GetUserResponse> getUser(@AuthenticationPrincipal Jwt jwt) throws JsonMappingException, JsonProcessingException {
         GetUserResponse response = new GetUserResponse();
 
         // Initialize username
@@ -97,6 +104,26 @@ public class UserController {
             newUser.setType("Free");
             userRepository.save(newUser);
         }
+
+        // Return the list of personas as a JSON string
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/get-messages")
+    public ResponseEntity<GetMessagesResponse> getMessages(@AuthenticationPrincipal Jwt jwt) {
+        GetMessagesResponse response = new GetMessagesResponse();
+
+        // Initialize username
+		String username = jwt.getClaimAsString("preferred_username");
+		logger.info("username: {}", username);
+
+        // Load user chat from database
+        UserChat userChatExample = new UserChat();
+        userChatExample.setCreatedBy(username);
+        List<UserChat> lstUserChat = userChatRepository.findAll(Example.of(userChatExample));
+
+        // Set response
+        response.setLstUserChat(lstUserChat);
 
         // Return the list of personas as a JSON string
         return ResponseEntity.ok(response);

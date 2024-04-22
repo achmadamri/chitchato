@@ -77,7 +77,6 @@ public class ChatController {
 	@Autowired
 	private UserRepository userRepository;
 
-	@PostMapping("/create-chat-session")
 	public ResponseEntity<String> createChatSession(@RequestBody CreateChatSessionRequest createChatSessionRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -88,7 +87,6 @@ public class ChatController {
 		return restTemplate.exchange(baseUrl + "/api/chat/create-chat-session", HttpMethod.POST, entity, String.class);
 	}
 
-	@PostMapping("/send-message")
 	public ResponseEntity<String> sendMessage(@RequestBody SendMessageRequest sendMessageRequest, String fastapiusersauth) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -181,7 +179,7 @@ public class ChatController {
 				int messageId = sendMessageNode.path("message_id").asInt();
 				int parentMessageId = sendMessageNode.path("parent_message").asInt();
 				String message = sendMessageNode.path("message").asText();
-				logger.info("2. Send Message. messageId {} message {}", messageId, message);
+				logger.info("2. Send Message. messageId {} message {}", messageId, message);				
 
 				// Save chat
 				UserChat userChat = new UserChat();
@@ -193,7 +191,17 @@ public class ChatController {
 				userChat.setMessageOut(message);
 				userChat.setMessageId(messageId);
 				userChat.setParentMessageId(parentMessageId);
+				// if message contain [admin] then follow up
+				if (sendRequest.getMessage().contains("[admin]")) {					
+					userChat.setFollowUp("yes");
+				} else {
+					userChat.setFollowUp("no");
+				}
+
 				userChatRepository.save(userChat);
+
+				// remove flag [admin] from message
+				message = message.replace("[admin]", "");
 
 				// Return message
 				return ResponseEntity.status(HttpStatus.OK).body(message);
@@ -252,7 +260,17 @@ public class ChatController {
 				userChat.setMessageOut(message);
 				userChat.setMessageId(messageId);
 				userChat.setParentMessageId(parentMessageId);
+				// if message contain [admin] then follow up
+				if (sendRequest.getMessage().contains("[admin]")) {					
+					userChat.setFollowUp("yes");
+				} else {
+					userChat.setFollowUp("no");
+				}
+
 				userChatRepository.save(userChat);
+
+				// remove flag [admin] from message
+				message = message.replace("[admin]", "");
 
 				// Return message
 				return ResponseEntity.status(HttpStatus.OK).body(message);

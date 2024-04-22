@@ -1,5 +1,5 @@
 import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
-import { Injectable } from "@angular/core";
+import { Injectable, isDevMode } from "@angular/core";
 import { KeycloakService } from "keycloak-angular";
 import { Observable } from "rxjs";
 import { GetPersonaListResponse } from "./getpersonalistresponse";
@@ -11,8 +11,7 @@ import { PostUpdatePersonaRequest } from "./postupdatepersonarequest";
   providedIn: 'root'
 })
 export class PersonaService {
-  // apiUrl = '/api/persona';
-  apiUrl = 'https://api.chitchato.com/persona';
+  apiUrl = isDevMode() ? '/api/persona' : 'https://api.chitchato.com/persona';
 
   constructor(private keycloakService: KeycloakService, private httpClient: HttpClient) { }
 

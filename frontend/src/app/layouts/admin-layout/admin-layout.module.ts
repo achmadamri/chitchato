@@ -10,6 +10,7 @@ import { DashboardComponent } from '../../pages/dashboard/dashboard.component';
 import { UserProfileComponent } from '../../pages/user-profile/user-profile.component';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { PersonaComponent } from 'src/app/pages/persona/persona.component';
+import { MessageComponent } from 'src/app/pages/message/message.component';
 // import { ToastrModule } from 'ngx-toastr';
 
 @NgModule({
@@ -24,6 +25,7 @@ import { PersonaComponent } from 'src/app/pages/persona/persona.component';
   declarations: [
     DashboardComponent,
     PersonaComponent,
+    MessageComponent,
     UserProfileComponent
   ]
 })

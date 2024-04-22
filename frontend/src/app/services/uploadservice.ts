@@ -1,5 +1,5 @@
 import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
-import { Injectable } from "@angular/core";
+import { Injectable, isDevMode } from "@angular/core";
 import { KeycloakService } from "keycloak-angular";
 import { Observable } from "rxjs";
 
@@ -8,8 +8,7 @@ import { Observable } from "rxjs";
   providedIn: 'root'
 })
 export class UploadService {
-  // apiUrl = '/api/upload';
-  apiUrl = 'https://api.chitchato.com/upload';
+  apiUrl = isDevMode() ? '/api/upload' : 'https://api.chitchato.com/upload';
 
   constructor(private keycloakService: KeycloakService, private httpClient: HttpClient) { }
 

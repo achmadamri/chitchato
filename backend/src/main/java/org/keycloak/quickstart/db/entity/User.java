@@ -39,4 +39,6 @@ public class User {
     private String status;
 
     private String type;
+
+    private LocalDateTime expiredAt;
 }

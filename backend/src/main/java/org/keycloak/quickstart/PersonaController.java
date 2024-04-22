@@ -98,6 +98,9 @@ public class PersonaController {
         personaExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
         List<Persona> personas = personaRepository.findAll(Example.of(personaExample));
 
+        // Iterate through the list of personas and remove NumberToken from each persona but do not remove it from the database
+        personas.forEach(persona -> persona.setNumberToken(null));
+
         response.setLstPersona(personas);
 
         // Return the list of personas as a JSON string
@@ -113,6 +116,9 @@ public class PersonaController {
         personaExample.setCreatedBy(jwt.getClaimAsString("preferred_username"));
         personaExample.setUuid(uuid);
         Persona persona = personaRepository.findOne(Example.of(personaExample)).orElse(null);
+
+        // Remove NumberToken from persona but do not remove it from the database
+        persona.setNumberToken(null);
 
         // Load Prompt from database
         Prompt promptExample = new Prompt();
