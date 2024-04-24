@@ -37,6 +37,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -110,7 +111,7 @@ public class UserController {
     }
 
     @GetMapping("/get-messages")
-    public ResponseEntity<GetMessagesResponse> getMessages(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<GetMessagesResponse> getMessages(@RequestParam String userNumber, @AuthenticationPrincipal Jwt jwt) {
         GetMessagesResponse response = new GetMessagesResponse();
 
         // Initialize username
@@ -120,7 +121,18 @@ public class UserController {
         // Load user chat from database
         UserChat userChatExample = new UserChat();
         userChatExample.setCreatedBy(username);
+        if (!userNumber.equals("")) {
+            userChatExample.setUserNumber(userNumber);
+        }
         List<UserChat> lstUserChat = userChatRepository.findAll(Example.of(userChatExample));
+
+        // Mark all messages as read
+        if (!userNumber.equals("")) {
+            for (UserChat userChat : lstUserChat) {
+                userChat.setFollowUp("no");
+                userChatRepository.save(userChat);
+            }        
+        }
 
         // Set response
         response.setLstUserChat(lstUserChat);

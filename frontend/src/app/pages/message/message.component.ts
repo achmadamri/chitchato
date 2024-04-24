@@ -21,6 +21,7 @@ export class MessageComponent implements OnInit {
   taskPrompt = '';  
   showAdd = false;
   qrCode = null;
+  userNumber = '';
   public getMessageResponse: GetMessageResponse;
 
   constructor(
@@ -28,12 +29,20 @@ export class MessageComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.getMessages();
+    this.userNumber = '';
+    this.getMessages(this.userNumber);
   }
 
-  getMessages() {
-    this.userService.getMessages().subscribe(data => {
+  getMessages(userNumber: string) {
+    this.clicked = true;
+
+    this.userNumber = userNumber;
+    this.getMessageResponse = null;
+
+    this.userService.getMessages(userNumber).subscribe(data => {
       this.getMessageResponse = data;
+
+      this.clicked = false;
     }, error => {
       if (error.status === 403) {
         window.location.href = '/';        

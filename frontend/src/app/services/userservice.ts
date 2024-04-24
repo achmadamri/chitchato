@@ -24,11 +24,12 @@ export class UserService {
     return this.httpClient.get<GetUserResponse>(`${this.apiUrl}/get-user`, { headers, params });
   }
 
-  getMessages(): Observable<GetMessageResponse> {
+  getMessages(userNumber: string): Observable<GetMessageResponse> {
     const headers = new HttpHeaders()
       .set('Content-Type', 'application/json');
 
     const params = new HttpParams()
+      .set('userNumber', userNumber)
       ;
 
     return this.httpClient.get<GetMessageResponse>(`${this.apiUrl}/get-messages`, { headers, params });

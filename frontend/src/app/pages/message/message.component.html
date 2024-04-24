@@ -16,7 +16,6 @@
                 <th scope="col">Number</th>
                 <th scope="col">Created At</th>
                 <th scope="col">Message</th>
-                <th scope="col">Follow Up</th>
                 <th scope="col"></th>
               </tr>
             </thead>
@@ -33,7 +32,8 @@
             </tbody>
             <tbody *ngIf="getMessageResponse != undefined">
               <tr *ngFor="let userChat of getMessageResponse.lstUserChat">
-                <th scope="row">
+                <!-- followUp -->
+                <th scope="row" *ngIf="userChat.followUp == 'yes'" style="background-color: #f75575; color: white;">
                   <div class="media align-items-center">
                     <a href="javascript:void(0)" class="avatar rounded-circle mr-3">
                       <img alt="Image placeholder" src="../assets/img/theme/istockphoto.jpg">
@@ -43,10 +43,10 @@
                     </div>
                   </div>
                 </th>
-                <td>
+                <td *ngIf="userChat.followUp == 'yes'" style="background-color: #f75575; color: white;">
                   {{userChat.createdAt | date: 'dd/MM/yyyy HH:mm:ss'}}
                 </td>
-                <td>
+                <td *ngIf="userChat.followUp == 'yes'" style="background-color: #f75575; color: white;">
                   <!-- wrap text -->
                   <div class="text-wrap">
                     In :
@@ -56,20 +56,45 @@
                     <br>{{userChat.messageOut}}
                   </div>
                 </td>
-                <td>
-                  <div *ngIf="userChat.followUp == 'yes'">
-                    <span class="badge badge-dot mr-4">
-                      <i class="bg-success"></i> Yes
-                    </span>
+                <td *ngIf="userChat.followUp == 'yes'" style="background-color: #f75575; color: white;">
+                  <button type="button" class="btn btn-primary" (click)="getMessages(userChat.userNumber)" [disabled]="clicked">View</button>
+                </td>
+                <!-- followUp -->
+
+                <!-- not followUp -->
+                <th scope="row" *ngIf="userChat.followUp == 'no'">
+                  <div class="media align-items-center">
+                    <a href="javascript:void(0)" class="avatar rounded-circle mr-3">
+                      <img alt="Image placeholder" src="../assets/img/theme/istockphoto.jpg">
+                    </a>
+                    <div class="media-body">
+                      <span class="mb-0 text-sm">{{userChat.userNumber}}</span>
+                    </div>
                   </div>
-                  <div *ngIf="userChat.followUp == 'no'">
-                    <span class="badge badge-dot mr-4">
-                      <i class="bg-danger"></i> No
-                    </span>
+                </th>
+                <td *ngIf="userChat.followUp == 'no'">
+                  {{userChat.createdAt | date: 'dd/MM/yyyy HH:mm:ss'}}
+                </td>
+                <td *ngIf="userChat.followUp == 'no'">
+                  <!-- wrap text -->
+                  <div class="text-wrap">
+                    In :
+                    <br>{{userChat.messageIn}}
+                    <br><br>
+                    Out :
+                    <br>{{userChat.messageOut}}
                   </div>
                 </td>
-                <td>
-                  <button type="button" class="btn btn-primary" (click)="doShowDetails(userChat.uuid)" [disabled]="clicked">View</button>
+                <td *ngIf="userChat.followUp == 'no'">
+                  <button type="button" class="btn btn-primary" (click)="getMessages(userChat.userNumber)" [disabled]="clicked">View</button>
+                </td>
+                <!-- not followUp -->
+              </tr>
+              <tr *ngIf="userNumber != ''">
+                <td colspan="4">
+                  <div class="text-right">
+                    <button type="button" class="btn btn-primary" (click)="getMessages('')" [disabled]="clicked">Clear</button>
+                  </div>
                 </td>
               </tr>
             </tbody>
