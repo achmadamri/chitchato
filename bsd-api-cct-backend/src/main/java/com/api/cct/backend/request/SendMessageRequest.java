@@ -1,4 +1,4 @@
-package com.api.cct.backend.controller;
+package com.api.cct.backend.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

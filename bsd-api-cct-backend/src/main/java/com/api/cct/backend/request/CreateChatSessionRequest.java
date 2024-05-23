@@ -1,4 +1,4 @@
-package com.api.cct.backend.controller;
+package com.api.cct.backend.request;
 
 public class CreateChatSessionRequest {
     private Integer personaId;
